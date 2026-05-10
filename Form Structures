@@ -1,0 +1,38 @@
+Volunteer Registration
+​Focus on availability, skills, and contact information so the NGO can match them with the right events.
+​Full Name
+​Email Address & Phone Number
+​Date of Birth (To verify age for certain tasks)
+​Skills/Interests (e.g., Teaching, Event Planning, Social Media, Manual Labor)
+​Availability (Dropdown: Weekends, Weekdays, or specific hours)
+​Emergency Contact Info
+​Location (City/Neighborhood)
+​2. Donor Registration
+​This form should be the shortest to reduce "friction" and encourage contributions. Keep it focused on identity and communication.
+​Full Name (or Organization Name)
+​Email Address (For sending tax-deductible receipts)
+​Phone Number (Optional)
+​Mailing Address (Required if sending physical receipts or thank-you kits)
+​Tax ID / PAN Number (Often required by law for tax exemption certificates)
+​Preferred Causes (Checkbox list: Education, Health, Environment, etc.)
+​3. NGO Partner Registration
+​This is a Business-to-Business (B2B) style form. You need to verify their legitimacy before allowing them to collect funds or post events.
+​Organization Name
+​NGO Registration Number / License Info
+​Contact Person Name & Title
+​Official Email & Website URL
+​Organization Address
+​Mission Statement (Short bio of what they do)
+​Bank Account Details (Crucial for fund disbursement)
+​Verification Documents (File upload for legal certificates)
+​4. Admin Registration
+​Typically, Admins aren't registered through a public form for security reasons. However, if you are building an internal setup:
+​Full Name
+​Work Email
+​Employee ID / Internal Reference
+​Role Level (Dropdown: Super Admin, Moderator, Financial Reviewer)
+​Two-Factor Authentication (2FA) Setup (Highly recommended for this role)
+​Key Technical Recommendations
+​Privacy & Security: Ensure you have a Terms & Conditions and Privacy Policy checkbox on every form, especially since you are handling sensitive donor and legal data.
+​Validation: Use real-time validation for email formats and phone numbers to prevent "junk" signups.
+​Social Sign-in: Consider adding "Sign up with Google" for Volunteers and Donors to speed up the process.
