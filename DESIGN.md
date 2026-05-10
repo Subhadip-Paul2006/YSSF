@@ -1,18 +1,18 @@
-# 🌿 YSSF Website Design System
+# YSSF Website Design System
 
 > Design Language & Visual Identity Guide for **YSSF (Youth Social Support Foundation)**
 
 ---
 
-# 📖 Brand Vision
+# Brand Vision
 
 YSSF represents:
 
-* Nature 🌱
-* Humanity ❤️
-* Community 🤝
-* Awareness 📢
-* Youth Energy ⚡
+* Nature
+* Humanity
+* Community
+* Awareness
+* Youth Energy
 
 The overall website should feel:
 
@@ -25,7 +25,7 @@ The overall website should feel:
 
 ---
 
-# 🎨 Color Palette
+# Color Palette
 
 ## Primary Colors
 
@@ -48,7 +48,7 @@ The overall website should feel:
 
 ---
 
-# 🖋 Typography System
+# Typography System
 
 The website should feel like:
 
@@ -118,7 +118,7 @@ Style Feel:
 
 ---
 
-# 🌿 Overall Design Language
+# Overall Design Language
 
 ## Core Feel
 
@@ -141,7 +141,7 @@ Avoid:
 
 ---
 
-# 🧩 UI Style Guidelines
+# UI Style Guidelines
 
 ## Buttons
 
@@ -164,7 +164,7 @@ Avoid:
 
 ---
 
-# 📦 Card Design
+# Card Design
 
 Cards should have:
 
@@ -182,7 +182,7 @@ Recommended card backgrounds:
 
 ---
 
-# 🌄 Hero Section Style
+# Hero Section Style
 
 ## Hero Feel
 
@@ -205,7 +205,7 @@ Possible visual elements:
 
 ---
 
-# ✨ Animations
+# Animations
 
 Animations should be:
 
@@ -231,7 +231,7 @@ Avoid:
 
 ---
 
-# 📐 Spacing System
+# Spacing System
 
 | Type                 | Size        |
 | -------------------- | ----------- |
@@ -243,7 +243,7 @@ Avoid:
 
 ---
 
-# 🌍 Section Ideas
+# Section Ideas
 
 ## Recommended Website Sections
 
@@ -297,7 +297,7 @@ Avoid:
 
 ---
 
-# 🌱 Texture & Background Ideas
+# Texture & Background Ideas
 
 Recommended background styles:
 
@@ -311,7 +311,7 @@ Recommended background styles:
 
 ---
 
-# 🖼 Image Style Direction
+# Image Style Direction
 
 Images should feel:
 
@@ -333,7 +333,7 @@ Recommended subjects:
 
 ---
 
-# 💡 UI Inspiration Keywords
+# UI Inspiration Keywords
 
 Use these keywords while designing:
 
@@ -348,7 +348,7 @@ Use these keywords while designing:
 
 ---
 
-# 📱 Responsive Design Notes
+# Responsive Design Notes
 
 ## Mobile First Priority
 
@@ -363,14 +363,14 @@ The website should:
 
 ---
 
-# 🧠 Final Design Philosophy
+# Final Design Philosophy
 
 > “YSSF should not feel like a corporate NGO website.
 > It should feel like a movement created by passionate young people trying to genuinely change society and nature together.”
 
 ---
 
-# ✅ Design Checklist
+# Design Checklist
 
 Before finalizing any page:
 
@@ -385,6 +385,6 @@ Before finalizing any page:
 
 ---
 
-# 🌿 YSSF Design Motto
+# YSSF Design Motto
 
 > “Small actions together can create a lasting impact.”
