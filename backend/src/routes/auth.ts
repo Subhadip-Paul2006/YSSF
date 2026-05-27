@@ -327,7 +327,7 @@ authRoutes.post("/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Error logging in:", error);
-    res.status(500).json({ error: "Failed to log in" });
+    res.status(500).json({ error: "Failed to log in", details: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -523,7 +523,7 @@ authRoutes.post("/google-supabase", async (req, res) => {
     });
   } catch (error) {
     console.error("Error in Supabase Google auth:", error);
-    res.status(500).json({ error: "Google authentication failed" });
+    res.status(500).json({ error: "Google authentication failed", details: error instanceof Error ? error.message : String(error) });
   }
 });
 
