@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: yssf
+      POSTGRES_PASSWORD: yssf-dev-password
+      POSTGRES_DB: yssf
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./backend
@@ -11,9 +22,10 @@ services:
       - PORT=3001
       - NODE_ENV=development
       - JWT_SECRET=yssf-dev-secret-change-in-production
-      - DATABASE_URL=file:./prisma/dev.db
-    volumes:
-      - ./backend/prisma:/app/prisma
+      - DATABASE_URL=postgresql://yssf:yssf-dev-password@db:5432/yssf
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -23,6 +35,8 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
     depends_on:
       - backend
+
+volumes:
+  pgdata:

@@ -1,0 +1,28 @@
+databases:
+  - name: yssf-db
+    plan: free
+    databaseName: yssf
+    ipAllowList: []
+
+services:
+  - type: web
+    name: yssf-backend
+    plan: free
+    runtime: node
+    region: oregon
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma db push && npx prisma db seed && npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yssf-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
