@@ -19,4 +19,4 @@ USER node
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm start"]
+CMD ["sh", "./start.sh"]
