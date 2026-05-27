@@ -133,7 +133,7 @@ export default function LoginPage() {
           )}
 
           {/* Step 1: Auth Method Selection */}
-          {!authenticated && !authMethod && (
+          {!authMethod && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -161,7 +161,7 @@ export default function LoginPage() {
           )}
 
           {/* Step 1b: Email/Password Login Flow */}
-          {!authenticated && authMethod === "email" && (
+          {authMethod === "email" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
