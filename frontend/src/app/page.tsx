@@ -1,25 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Heart, Globe, Shield, Sparkles, Send, Award, CheckCircle2, Leaf } from "lucide-react";
+import { Heart, Sparkles, Send, Award, CheckCircle2, Leaf } from "lucide-react";
 
 import StatCard from "@/components/StatCard";
 import CampaignCard from "@/components/CampaignCard";
 import EventTimeline from "@/components/EventTimeline";
+import { apiGetCampaigns, apiCreateDonation } from "@/lib/api";
 
 export default function Home() {
   // Donation widget state
   const [donateAmount, setDonateAmount] = useState<string>("1000");
   const [customAmount, setCustomAmount] = useState<string>("");
-  const [selectedCause, setSelectedCause] = useState<string>("Environment");
+  const [selectedCause, setSelectedCause] = useState<string>("Green Canopy Project");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("1");
   const [donorName, setDonorName] = useState<string>("");
   const [donorEmail, setDonorEmail] = useState<string>("");
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiGetCampaigns()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setCampaigns(data);
+          setSelectedCampaignId(data[0].id);
+          setSelectedCause(data[0].title);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load campaigns for donation widget, using defaults", err);
+      });
+  }, []);
 
   const handlePresetClick = (amount: string) => {
     setDonateAmount(amount);
@@ -31,14 +48,20 @@ export default function Home() {
     setDonateAmount("");
   };
 
-  const handleDonateSubmit = (e: React.FormEvent) => {
+  const handleDonateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!donorName || !donorEmail) return;
+    if (!donorName || !donorEmail || !selectedCampaignId) return;
 
     setLoading(true);
 
-    // Simulate Payment processing
-    setTimeout(() => {
+    try {
+      await apiCreateDonation({
+        amount: Number(finalAmount),
+        donorName,
+        donorEmail,
+        campaignId: selectedCampaignId,
+      });
+
       setLoading(false);
       setIsSubmitted(true);
       
@@ -49,7 +72,11 @@ export default function Home() {
         origin: { y: 0.6 },
         colors: ["#0B5D3B", "#8FD694", "#F4B400", "#FFFFFF"],
       });
-    }, 1500);
+    } catch (err) {
+      console.error("Donation failed:", err);
+      alert(err instanceof Error ? err.message : "Donation failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   const finalAmount = donateAmount || customAmount || "0";
@@ -189,7 +216,7 @@ export default function Home() {
                 Youth Sakti Social Foundation (YSSF) was founded on a simple premise: the energy of youth is the greatest renewable resource for social good. We connect the passion of student volunteers with critical local causes that need immediate physical and financial intervention.
               </p>
               <p className="font-sans text-base text-foreground/80 leading-relaxed">
-                By forming strategic partnerships with local schools and academies (like Barjora High, Delhi Public School, and St. Michael's), we create a highly coordinated network of volunteers capable of managing large-scale ecological programs, community sanitation campaigns, and healthcare support systems.
+                By forming strategic partnerships with local schools and academies (like Barjora High, Delhi Public School, and St. Michael&apos;s), we create a highly coordinated network of volunteers capable of managing large-scale ecological programs, community sanitation campaigns, and healthcare support systems.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 font-heading font-bold text-primary-900 text-sm">
@@ -280,6 +307,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <CampaignCard
+              slug="green-canopy-project"
               title="Green Canopy Project"
               category="Environment"
               description="Our target is planting 20,000 native saplings in Bankura to establish organic corridors. Funds will be used for sapling purchase, fencing, and compost."
@@ -291,6 +319,7 @@ export default function Home() {
               delay={0.1}
             />
             <CampaignCard
+              slug="sakti-blood-directory"
               title="Sakti Blood Directory"
               category="Healthcare"
               description="Developing a custom web dashboard to match emergency donors with local hospital units in real-time, coupled with conducting 10 local weekend donation camps."
@@ -302,6 +331,7 @@ export default function Home() {
               delay={0.2}
             />
             <CampaignCard
+              slug="sakti-scholar-centers"
               title="Sakti Scholar Centers"
               category="Education"
               description="Setting up modern learning centers in disadvantaged communities, equipped with books, tablets, and volunteer teachers to support homework studies."
@@ -351,7 +381,7 @@ export default function Home() {
               className="yssf-card p-8 bg-surface-100/30 border-2 border-primary-400/25 flex flex-col justify-between"
             >
               <p className="font-sans text-foreground/90 italic leading-relaxed mb-6">
-                "Our students loved the YSSF plantation drive! It wasn't just planting seeds; it was an educational seminar where kids learned about biodiversity. Highly professional team."
+                &quot;Our students loved the YSSF plantation drive! It wasn&apos;t just planting seeds; it was an educational seminar where kids learned about biodiversity. Highly professional team.&quot;
               </p>
               <div>
                 <p className="font-heading font-bold text-primary-900 text-sm">Mr. A. Mukhopadhyay</p>
@@ -367,7 +397,7 @@ export default function Home() {
               className="yssf-card p-8 bg-surface-100/30 border-2 border-primary-400/25 flex flex-col justify-between"
             >
               <p className="font-sans text-foreground/90 italic leading-relaxed mb-6">
-                "Volunteering with YSSF has given me a direct way to contribute to my neighborhood. The blood camp was managed flawlessly, complying with clinical standards while keeping energy high."
+                &quot;Volunteering with YSSF has given me a direct way to contribute to my neighborhood. The blood camp was managed flawlessly, complying with clinical standards while keeping energy high.&quot;
               </p>
               <div>
                 <p className="font-heading font-bold text-primary-900 text-sm">Sneha Sen</p>
@@ -383,7 +413,7 @@ export default function Home() {
               className="yssf-card p-8 bg-surface-100/30 border-2 border-primary-400/25 flex flex-col justify-between"
             >
               <p className="font-sans text-foreground/90 italic leading-relaxed mb-6">
-                "YSSF's commitment to reporting is outstanding. I received a detailed email report containing bills and photos showing exactly where my 80G donation went. I fully trust them."
+                &quot;YSSF&apos;s commitment to reporting is outstanding. I received a detailed email report containing bills and photos showing exactly where my 80G donation went. I fully trust them.&quot;
               </p>
               <div>
                 <p className="font-heading font-bold text-primary-900 text-sm">Rajeev Sharma</p>
@@ -464,14 +494,27 @@ export default function Home() {
                   <label htmlFor="cause-select" className="font-heading font-semibold text-xs text-primary-900">Select Cause</label>
                   <select
                     id="cause-select"
-                    value={selectedCause}
-                    onChange={(e) => setSelectedCause(e.target.value)}
+                    value={selectedCampaignId}
+                    onChange={(e) => {
+                      setSelectedCampaignId(e.target.value);
+                      const selected = campaigns.find(c => c.id === e.target.value);
+                      if (selected) setSelectedCause(selected.title);
+                    }}
                     className="w-full px-4 py-3 rounded-xl border border-primary-200 bg-white font-sans text-sm text-primary-900 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   >
-                    <option value="Environment">Green Canopy (Environment)</option>
-                    <option value="Blood Camp">Blood Network (Healthcare)</option>
-                    <option value="Education">Scholar Centers (Education)</option>
-                    <option value="General Support">General YSSF Fund</option>
+                    {campaigns.length > 0 ? (
+                      campaigns.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title} ({c.category})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="1">Green Canopy Project (Environment)</option>
+                        <option value="2">Sakti Blood Directory (Healthcare)</option>
+                        <option value="3">Sakti Scholar Centers (Education)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 interface CampaignCardProps {
+  slug: string;
   title: string;
   category: string;
   description: string;
@@ -17,6 +18,7 @@ interface CampaignCardProps {
 }
 
 export default function CampaignCard({
+  slug,
   title,
   category,
   description,
@@ -94,17 +96,17 @@ export default function CampaignCard({
         {/* CTA Buttons */}
         <div className="grid grid-cols-2 gap-3 mt-auto">
           <Link
-            href="/register?role=volunteer"
+            href={`/campaigns/${slug}`}
             className="px-4 py-2 border-2 border-primary-900 text-primary-900 hover:bg-surface-100 font-heading font-semibold text-xs rounded-xl text-center transition-colors"
           >
-            Volunteer
+            View Details
           </Link>
-          <a
-            href="#donate"
+          <Link
+            href={`/campaigns/${slug}`}
             className="px-4 py-2 bg-accent-500 hover:bg-accent-600 text-primary-900 border-2 border-primary-900/10 font-heading font-bold text-xs rounded-xl text-center transition-all shadow-sm shadow-accent-500/10 hover:shadow-md"
           >
             Donate
-          </a>
+          </Link>
         </div>
       </div>
     </motion.div>

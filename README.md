@@ -6,31 +6,21 @@
 
 | Category | Technology | Purpose / Usage |
 |---|---|---|
-| Frontend Framework | Next.js (TypeScript) | Main frontend framework for SSR, SEO, routing, and full-stack capabilities |
-| UI Library | React.js | Component-based UI development |
-| Styling | Tailwind CSS | Utility-first responsive styling system |
-| Animation | Framer Motion | Smooth UI animations, page transitions, micro-interactions |
-| 3D & Interactive Graphics | Three.js | Interactive 3D visuals, immersive storytelling sections |
-| Backend Framework | Hono.js | Lightweight, high-performance backend APIs and middleware |
-| Fullstack Integration | Next.js Server Actions | Secure server-side operations and frontend-backend integration |
-| Authentication | Supabase Auth | User authentication, session management, OAuth providers |
-| Database | Supabase PostgreSQL | Scalable relational database system |
-| ORM | Prisma ORM | Type-safe database queries and schema management |
-| State Management | Zustand | Lightweight global state management |
-| File & Media Storage | Cloudinary | Image optimization, CDN delivery, media storage |
-| CMS | Sanity CMS | Dynamic content management for blogs, campaigns, events, NGO updates |
-| Payment Gateway | Razorpay | Donation processing and secure online payments |
-| Deployment (Frontend) | Vercel | Frontend hosting and CI/CD deployment |
-| Deployment (Backend) | Railway (Optional) | Backend hosting for APIs and services if needed |
-| Cloud Infrastructure | Google Cloud Platform | Advanced cloud services and scalability support |
-| Monitoring | Sentry | Error tracking and performance monitoring |
-| Product Analytics | PostHog | User analytics, event tracking, behavioral insights |
-| Accessibility | React Aria | Accessible UI components and WCAG-compliant interactions |
-| Language | TypeScript | Type safety, maintainability, and scalable development |
-| Version Control | Git + GitHub | Source code management and collaboration |
-| API Communication | REST API / Server Actions | Data exchange between frontend and backend |
-| SEO Optimization | Next.js SEO Features | Search engine optimization and metadata management |
-| Performance Optimization | Image Optimization + Lazy Loading | Faster loading speeds and improved user experience |
+| Frontend Framework | Next.js 16 (TypeScript) | Main frontend framework for dynamic page rendering and routing |
+| UI Library | React.js 19 | Component-based UI development |
+| Styling | Tailwind CSS v4 | Utility-first responsive styling system |
+| Animation | Framer Motion 12 | Smooth UI animations, page transitions, and timeline micro-interactions |
+| Backend Framework | Express.js 5 | Robust backend server handling REST APIs and authentication routing |
+| Authentication | Custom JWT Auth (jose) | Secure token-based session management, cookies, and roles (Admin/Volunteer/Donor) |
+| Database | SQLite (better-sqlite3) | Serverless relational database for local development and production |
+| ORM | Prisma 7 | Schema management, type-safe queries, database adapters, and migration configurations |
+| State Management | React Context | Native React Context (`AuthContext`) for tracking active sessions |
+| File & Media Storage | Static Public Assets | Fast local hosting for campaign and gallery media files |
+| Payment Gateway | Simulated Sandbox Integration | Dynamic simulation processing and recording donations in SQLite database |
+| Language | TypeScript | Strict type safety, interface verification, and contract types |
+| Version Control | Git + GitHub | Source code management and collaborative versioning |
+| API Communication | Typed REST API Client (`api.ts`) | Unified frontend-backend integration with custom CORS and authentication interceptors |
+| Containerization | Docker & docker-compose | Multi-stage container builds and orchestrated service runners |
 
 ---
 
@@ -40,12 +30,11 @@
 
 | Tool | Where It Will Be Used |
 |---|---|
-| Next.js | Routing, SSR, SEO pages, dynamic rendering |
-| React.js | Reusable UI component creation |
-| Tailwind CSS | Responsive layouts, utility styling |
-| Framer Motion | Hero animations, scroll transitions, interactive effects |
-| Three.js | NGO storytelling visuals, interactive 3D experiences |
-| Zustand | Authentication state, dashboard state, global UI state |
+| Next.js 16 | Routing, SEO pages, dynamic rendering, public assets serving |
+| React.js 19 | Reusable UI component creation, state lifecycle hooks |
+| Tailwind CSS v4 | Responsive layouts, typography styling, premium NGO CSS design |
+| Framer Motion 12 | Hero animations, scroll transitions, event timeline animations |
+| React Context | Global session authentication tracking (`AuthContext`) |
 
 ---
 
@@ -53,10 +42,9 @@
 
 | Tool | Where It Will Be Used |
 |---|---|
-| Hono.js | REST APIs, middleware handling, backend services |
-| Next.js Server Actions | Secure form submissions and server-side logic |
-| Prisma ORM | Database schema and query management |
-| Supabase PostgreSQL | Data storage for users, donations, campaigns, blogs |
+| Express.js 5 | REST APIs, routing, CORS middlewares, custom auth guards |
+| Prisma ORM 7 | Database migrations, schema configurations, and connection adapters |
+| SQLite | Relay storage for campaigns, users, blog posts, events, donations |
 
 ---
 
@@ -64,9 +52,10 @@
 
 | Tool | Purpose |
 |---|---|
-| Supabase Auth | User login/signup, role management |
-| JWT / Session Handling | Secure user authentication sessions |
-| Environment Variables | API keys and sensitive credential protection |
+| Custom JWT / `jose` | Secure user token verification, signout handling, role validation |
+| Bcryptjs | 10-round salted password hashing for users (Admin/Volunteers/Donors) |
+| Zod | Request body schema parsing and validation |
+| Environment Variables | Strict checks for `JWT_SECRET` and `PORT` configurations |
 
 ---
 
@@ -74,53 +63,7 @@
 
 | Tool | Purpose |
 |---|---|
-| Cloudinary | NGO gallery images, campaign media, optimized delivery |
-| CDN Optimization | Faster global media access |
-
----
-
-## Content Management System
-
-| Tool | Purpose |
-|---|---|
-| Sanity CMS | NGO blogs, events, campaign details, dynamic content management |
-
----
-
-## Payment Integration
-
-| Tool | Purpose |
-|---|---|
-| Razorpay | Online donations, payment verification, transaction handling |
-
----
-
-## Monitoring & Analytics
-
-| Tool | Purpose |
-|---|---|
-| Sentry | Real-time error monitoring and debugging |
-| PostHog | User behavior analytics and feature tracking |
-
----
-
-## Accessibility & UX
-
-| Tool | Purpose |
-|---|---|
-| React Aria | Accessible UI interactions and WCAG compliance |
-| Responsive Design | Multi-device support |
-| SEO Optimization | Better search engine visibility |
-
----
-
-## Deployment & Infrastructure
-
-| Tool | Purpose |
-|---|---|
-| Vercel | Frontend deployment and edge optimization |
-| Railway | Optional backend deployment |
-| Google Cloud Platform | Future scalability and advanced infrastructure services |
+| Static Assets | Local storage and serving of campaign images, student welcomes, and PDFs |
 
 ---
 
@@ -130,12 +73,10 @@
 User
    ↓
 Next.js Frontend
-   ↓
-Hono.js APIs / Server Actions
-   ↓
-Supabase PostgreSQL
-   ↓
-Prisma ORM
+   ↓ (api.ts REST client)
+Express.js Backend APIs
+   ↓ (Prisma ORM Client)
+SQLite database (dev.db)
 ```
 
 ---

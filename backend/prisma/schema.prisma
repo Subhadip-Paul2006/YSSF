@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phone           String?
+  passwordHash    String?
+  role            String   @default("volunteer")
+  dob             String?
+  location        String?
+  skills          String?
+  availability    String?
+  emergencyName   String?
+  emergencyPhone  String?
+  employeeId      String?
+  roleLevel       String?
+  panTaxId        String?
+  orgName         String?
+  regNumber       String?
+  website         String?
+  address         String?
+  mission         String?
+  preferredCauses String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  donations          Donation[]
+  eventRegistrations EventRegistration[]
+}
+
+model Campaign {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  category        String
+  description     String
+  fullDescription String
+  raised          Int      @default(0)
+  goal            Int
+  imageSrc        String
+  accentClass     String
+  progressColor   String
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  donations Donation[]
+}
+
+model Event {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  date            String
+  time            String
+  location        String
+  schoolPartner   String
+  description     String
+  fullDescription String
+  imageSrc        String
+  badge           String
+  badgeColor      String
+  category        String
+  status          String   @default("upcoming")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  registrations EventRegistration[]
+}
+
+model Donation {
+  id         String   @id @default(cuid())
+  amount     Int
+  donorName  String
+  donorEmail String
+  campaignId String
+  userId     String?
+  paymentRef String?  @default("pending")
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  eventId   String
+  userId    String?
+  status    String   @default("confirmed")
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  user  User? @relation(fields: [userId], references: [id])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model BlogPost {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  title      String
+  category   String
+  excerpt    String
+  content    String
+  author     String
+  authorRole String?
+  imageSrc   String
+  tags       String
+  readTime   String
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GalleryItem {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  description String
+  imageSrc    String
+  date        String
+  createdAt   DateTime @default(now())
+}

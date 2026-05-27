@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,24 +14,26 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  KeyRound
+  KeyRound,
+  Loader2,
+  Mail,
 } from "lucide-react";
+import { apiSignUp } from "@/lib/api";
 
 type RoleType = "volunteer" | "donor" | "ngo" | "admin";
 
+function parseRoleParam(role: string | null): RoleType {
+  return role === "donor" || role === "ngo" || role === "admin" ? role : "volunteer";
+}
+
 function RegisterFormContent() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<RoleType>("volunteer");
+  const [activeTab, setActiveTab] = useState<RoleType>(() => parseRoleParam(searchParams.get("role")));
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [emailSent, setEmailSent] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Sync tab with URL search parameter if present
-  useEffect(() => {
-    const roleParam = searchParams.get("role");
-    if (roleParam === "volunteer" || roleParam === "donor" || roleParam === "ngo" || roleParam === "admin") {
-      setActiveTab(roleParam as RoleType);
-    }
-  }, [searchParams]);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   // Form Fields - Volunteer
   const [vName, setVName] = useState("");
@@ -43,6 +45,8 @@ function RegisterFormContent() {
   const [vLocation, setVLocation] = useState("");
   const [vEmergencyName, setVEmergencyName] = useState("");
   const [vEmergencyPhone, setVEmergencyPhone] = useState("");
+  const [vPassword, setVPassword] = useState("");
+  const [vConfirmPassword, setVConfirmPassword] = useState("");
 
   // Form Fields - Donor
   const [dName, setDName] = useState("");
@@ -51,6 +55,8 @@ function RegisterFormContent() {
   const [dAddress, setDAddress] = useState("");
   const [dPan, setDPan] = useState("");
   const [dCauses, setDCauses] = useState<string[]>([]);
+  const [dPassword, setDPassword] = useState("");
+  const [dConfirmPassword, setDConfirmPassword] = useState("");
 
   // Form Fields - NGO Partner
   const [nOrgName, setNOrgName] = useState("");
@@ -62,6 +68,8 @@ function RegisterFormContent() {
   const [nMission, setNMission] = useState("");
   const [nBankDetails, setNBankDetails] = useState("");
   const [nFileUploaded, setNFileUploaded] = useState<boolean>(false);
+  const [nPassword, setNPassword] = useState("");
+  const [nConfirmPassword, setNConfirmPassword] = useState("");
 
   // Form Fields - Admin
   const [aName, setAName] = useState("");
@@ -69,6 +77,8 @@ function RegisterFormContent() {
   const [aEmployeeId, setAEmployeeId] = useState("");
   const [aRoleLevel, setARoleLevel] = useState("Moderator");
   const [aMfaSecret, setAMfaSecret] = useState("");
+  const [aPassword, setAPassword] = useState("");
+  const [aConfirmPassword, setAConfirmPassword] = useState("");
 
   // Checkboxes
   const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
@@ -85,38 +95,79 @@ function RegisterFormContent() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setFieldErrors({});
+
     if (!agreeTerms) {
-      alert("Please agree to the Terms and Conditions / Privacy Policy.");
+      setError("Please agree to the Terms and Conditions / Privacy Policy.");
+      return;
+    }
+
+    // Get role-specific values
+    let name = "", email = "", phone = "", password = "", confirmPassword = "";
+    const roleMap: Record<RoleType, string> = {
+      volunteer: "VOLUNTEER",
+      donor: "DONOR",
+      ngo: "NGO_PARTNER",
+      admin: "ADMIN",
+    };
+
+    if (activeTab === "volunteer") {
+      name = vName; email = vEmail; phone = vPhone; password = vPassword; confirmPassword = vConfirmPassword;
+    } else if (activeTab === "donor") {
+      name = dName; email = dEmail; phone = dPhone || ""; password = dPassword; confirmPassword = dConfirmPassword;
+    } else if (activeTab === "ngo") {
+      name = nContactPerson; email = nEmail; phone = ""; password = nPassword; confirmPassword = nConfirmPassword;
+    } else if (activeTab === "admin") {
+      name = aName; email = aEmail; phone = ""; password = aPassword; confirmPassword = aConfirmPassword;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
 
-    // Simulate submission
-    setTimeout(() => {
-      setLoading(false);
-      setIsSuccess(true);
-
-      // Fire confetti
-      confetti({
-        particleCount: 180,
-        spread: 100,
-        origin: { y: 0.5 },
-        colors: ["#0B5D3B", "#8FD694", "#F4B400", "#FFFFFF"],
+    try {
+      const result = await apiSignUp({
+        name,
+        email,
+        phone,
+        role: roleMap[activeTab],
+        password,
       });
-    }, 2000);
+
+      if (result?.success) {
+        setIsSuccess(true);
+        setEmailSent(true);
+        confetti({
+          particleCount: 180,
+          spread: 100,
+          origin: { y: 0.5 },
+          colors: ["#0B5D3B", "#8FD694", "#F4B400", "#FFFFFF"],
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Registration failed";
+      setError(message);
+    }
+    setLoading(false);
   };
 
   const handleReset = () => {
     setIsSuccess(false);
+    setEmailSent(false);
     setAgreeTerms(false);
+    setError(null);
+    setFieldErrors({});
     // Reset inputs
-    setVName(""); setVEmail(""); setVPhone(""); setVDob(""); setVLocation("");
-    setDName(""); setDEmail(""); setDPhone(""); setDAddress(""); setDPan("");
-    setNOrgName(""); setNRegNumber(""); setNContactPerson(""); setNEmail(""); setNWebsite("");
-    setAName(""); setAEmail(""); setAEmployeeId("");
+    setVName(""); setVEmail(""); setVPhone(""); setVDob(""); setVLocation(""); setVPassword(""); setVConfirmPassword("");
+    setDName(""); setDEmail(""); setDPhone(""); setDAddress(""); setDPan(""); setDPassword(""); setDConfirmPassword("");
+    setNOrgName(""); setNRegNumber(""); setNContactPerson(""); setNEmail(""); setNWebsite(""); setNPassword(""); setNConfirmPassword("");
+    setAName(""); setAEmail(""); setAEmployeeId(""); setAPassword(""); setAConfirmPassword("");
   };
 
   return (
@@ -211,27 +262,63 @@ function RegisterFormContent() {
               </motion.div>
               
               <h3 className="font-heading font-extrabold text-3xl mb-3">
-                Registration Successful!
+                {emailSent ? "Check Your Email!" : "Registration Successful!"}
               </h3>
-              
-              <p className="font-sans text-primary-200 text-base max-w-md mb-8">
-                {activeTab === "volunteer" && `Welcome to the team! We have registered you as a volunteer. You will receive updates about upcoming drives.`}
-                {activeTab === "donor" && `Thank you for registering! You are now part of our donor ecosystem. We will coordinate details regarding tax certificates.`}
-                {activeTab === "ngo" && `Thank you! Your NGO registration request has been submitted. Our compliance team will audit the license number and contact you.`}
-                {activeTab === "admin" && `Internal Employee profile generated successfully. Please check your system email for standard 2FA setup.`}
-              </p>
 
-              <button
-                onClick={handleReset}
-                className="px-6 py-2.5 bg-white text-primary-900 hover:bg-surface-100 font-heading font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
-              >
-                Register Another Account
-              </button>
+              {emailSent ? (
+                <div className="space-y-3 mb-8">
+                  <div className="inline-flex p-3 rounded-full bg-white/10 text-accent-500 mb-2">
+                    <Mail className="w-8 h-8" />
+                  </div>
+                  <p className="font-sans text-primary-200 text-base max-w-md">
+                    We have sent a verification link to your email address. Please check your inbox and verify your email to activate your account.
+                  </p>
+                  <p className="font-sans text-primary-200/70 text-sm">
+                    You can sign in after verifying your email.
+                  </p>
+                </div>
+              ) : (
+                <p className="font-sans text-primary-200 text-base max-w-md mb-8">
+                  {activeTab === "volunteer" && `Welcome to the team! We have registered you as a volunteer. You will receive updates about upcoming drives.`}
+                  {activeTab === "donor" && `Thank you for registering! You are now part of our donor ecosystem. We will coordinate details regarding tax certificates.`}
+                  {activeTab === "ngo" && `Thank you! Your NGO registration request has been submitted. Our compliance team will audit the license number and contact you.`}
+                  {activeTab === "admin" && `Internal Employee profile generated successfully. Please check your system email for standard 2FA setup.`}
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                {emailSent && (
+                  <Link
+                    href="/login"
+                    className="px-6 py-2.5 bg-accent-500 text-primary-900 hover:bg-accent-400 font-heading font-bold text-sm rounded-xl transition-all shadow-md text-center"
+                  >
+                    Go to Login
+                  </Link>
+                )}
+                <button
+                  onClick={handleReset}
+                  className="px-6 py-2.5 bg-white text-primary-900 hover:bg-surface-100 font-heading font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+                >
+                  Register Another Account
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Error Display */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2"
+            >
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="font-sans text-sm text-red-700">{error}</p>
+            </motion.div>
+          )}
           
           {/* VOLUNTEER TAB */}
           {activeTab === "volunteer" && (
@@ -324,6 +411,39 @@ function RegisterFormContent() {
                     <option value="Flexible">Flexible hours</option>
                     <option value="On-Call Emergency">Emergency Response On-Call</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label htmlFor="vol-password" className="font-heading font-semibold text-xs text-primary-900">Password</label>
+                  <input
+                    id="vol-password"
+                    type="password"
+                    required
+                    value={vPassword}
+                    onChange={(e) => setVPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className={`w-full px-4 py-3 rounded-xl border font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground ${
+                      fieldErrors.password ? "border-red-400" : "border-primary-200"
+                    }`}
+                  />
+                  {fieldErrors.password && (
+                    <p className="font-sans text-xs text-red-500 mt-1">{fieldErrors.password[0]}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="vol-confirm-password" className="font-heading font-semibold text-xs text-primary-900">Confirm Password</label>
+                  <input
+                    id="vol-confirm-password"
+                    type="password"
+                    required
+                    value={vConfirmPassword}
+                    onChange={(e) => setVConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground"
+                  />
                 </div>
               </div>
 
@@ -459,6 +579,39 @@ function RegisterFormContent() {
                     onChange={(e) => setDAddress(e.target.value)}
                     placeholder="e.g. Flat 3A, Green Meadows Appt, Salt Lake, Kolkata, 700091"
                     className="w-full px-4 py-3 rounded-xl border border-primary-200 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none text-foreground"
+                  />
+                </div>
+              </div>
+
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label htmlFor="donor-password" className="font-heading font-semibold text-xs text-primary-900">Password</label>
+                  <input
+                    id="donor-password"
+                    type="password"
+                    required
+                    value={dPassword}
+                    onChange={(e) => setDPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className={`w-full px-4 py-3 rounded-xl border font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground ${
+                      fieldErrors.password ? "border-red-400" : "border-primary-200"
+                    }`}
+                  />
+                  {fieldErrors.password && (
+                    <p className="font-sans text-xs text-red-500 mt-1">{fieldErrors.password[0]}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="donor-confirm-password" className="font-heading font-semibold text-xs text-primary-900">Confirm Password</label>
+                  <input
+                    id="donor-confirm-password"
+                    type="password"
+                    required
+                    value={dConfirmPassword}
+                    onChange={(e) => setDConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground"
                   />
                 </div>
               </div>
@@ -629,6 +782,39 @@ function RegisterFormContent() {
                   <span className="font-sans text-[10px] text-foreground/60 mt-1">Accepts PDF, ZIP formats under 10MB</span>
                 </div>
               </div>
+
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label htmlFor="ngo-password" className="font-heading font-semibold text-xs text-primary-900">Password</label>
+                  <input
+                    id="ngo-password"
+                    type="password"
+                    required
+                    value={nPassword}
+                    onChange={(e) => setNPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className={`w-full px-4 py-3 rounded-xl border font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground ${
+                      fieldErrors.password ? "border-red-400" : "border-primary-200"
+                    }`}
+                  />
+                  {fieldErrors.password && (
+                    <p className="font-sans text-xs text-red-500 mt-1">{fieldErrors.password[0]}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="ngo-confirm-password" className="font-heading font-semibold text-xs text-primary-900">Confirm Password</label>
+                  <input
+                    id="ngo-confirm-password"
+                    type="password"
+                    required
+                    value={nConfirmPassword}
+                    onChange={(e) => setNConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -724,6 +910,39 @@ function RegisterFormContent() {
                   )}
                 </div>
               </div>
+
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label htmlFor="admin-password" className="font-heading font-semibold text-xs text-primary-900">Password</label>
+                  <input
+                    id="admin-password"
+                    type="password"
+                    required
+                    value={aPassword}
+                    onChange={(e) => setAPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className={`w-full px-4 py-3 rounded-xl border font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground ${
+                      fieldErrors.password ? "border-red-400" : "border-primary-200"
+                    }`}
+                  />
+                  {fieldErrors.password && (
+                    <p className="font-sans text-xs text-red-500 mt-1">{fieldErrors.password[0]}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="admin-confirm-password" className="font-heading font-semibold text-xs text-primary-900">Confirm Password</label>
+                  <input
+                    id="admin-confirm-password"
+                    type="password"
+                    required
+                    value={aConfirmPassword}
+                    onChange={(e) => setAConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 text-foreground"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -749,14 +968,21 @@ function RegisterFormContent() {
             className={`w-full py-4 text-white font-heading font-extrabold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "volunteer" ? "bg-primary-900 hover:bg-primary-800 shadow-primary-900/10 hover:shadow-primary-900/20" : ""
             } ${
-              activeTab === "donor" ? "bg-accent-600 hover:bg-accent-700 shadow-accent-600/10 hover:shadow-accent-600/20 animate-pulse" : ""
+              activeTab === "donor" ? "bg-accent-600 hover:bg-accent-700 shadow-accent-600/10 hover:shadow-accent-600/20" : ""
             } ${
               activeTab === "ngo" ? "bg-primary-700 hover:bg-primary-600 shadow-primary-700/10 hover:shadow-primary-700/20" : ""
             } ${
               activeTab === "admin" ? "bg-slate-800 hover:bg-slate-700 shadow-slate-800/10 hover:shadow-slate-800/20" : ""
             }`}
           >
-            {loading ? "Registering Profile..." : "Submit Registration Application"}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Registering Profile...</span>
+              </>
+            ) : (
+              "Submit Registration Application"
+            )}
           </button>
         </form>
       </div>
