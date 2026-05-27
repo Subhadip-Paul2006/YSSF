@@ -34,17 +34,6 @@ donationsRoutes.get("/", async (req, res) => {
       where,
       orderBy: { createdAt: "desc" },
       include: { campaign: true },
-      select: {
-        id: true,
-        amount: true,
-        donorName: true,
-        donorEmail: true,
-        campaignId: true,
-        userId: true,
-        paymentRef: true,
-        createdAt: true,
-        campaign: true,
-      },
     });
 
     res.json(donations);
