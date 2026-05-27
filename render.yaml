@@ -21,6 +21,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        sync: false
+        value: https://yssfd.vercel.app
       - key: NODE_ENV
         value: production
