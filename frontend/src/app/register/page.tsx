@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Globe,
   Loader2,
   Mail,
 } from "lucide-react";
@@ -172,6 +173,24 @@ function RegisterFormContent() {
         <p className="font-sans text-foreground/80 max-w-xl mx-auto">
           Choose your role and register to join our ecosystem. Empower local communities, restore forests, or secure financial operations.
         </p>
+      </div>
+
+      {/* Google Sign-Up */}
+      <div className="mb-8 space-y-4">
+        <button
+          disabled
+          className="w-full py-4 bg-white border-2 border-primary-200 text-primary-900 font-heading font-bold text-sm rounded-xl flex items-center justify-center gap-3 opacity-60 cursor-not-allowed relative"
+        >
+          <Globe className="w-5 h-5" />
+          <span>Sign up with Google</span>
+          <span className="absolute -top-2 -right-2 bg-accent-500 text-primary-900 text-[10px] font-bold px-2 py-0.5 rounded-full">Coming Soon</span>
+        </button>
+
+        <div className="flex items-center gap-4">
+          <div className="flex-1 h-px bg-primary-200/50" />
+          <span className="font-heading font-semibold text-xs text-foreground/50 uppercase tracking-wider">or register with email</span>
+          <div className="flex-1 h-px bg-primary-200/50" />
+        </div>
       </div>
 
       {/* Tab Headers */}
