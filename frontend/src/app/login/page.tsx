@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import { apiSignIn } from "@/lib/api";
 
-type AuthMethod = "google" | "email" | null;
-type RoleType = "volunteer" | "donor" | "ngo";
+type AuthMethod = "email" | null;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,8 +23,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});

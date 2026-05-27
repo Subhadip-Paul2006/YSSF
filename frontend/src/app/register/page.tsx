@@ -153,7 +153,6 @@ function RegisterFormContent() {
     setVName(""); setVEmail(""); setVPhone(""); setVDob(""); setVLocation(""); setVPassword(""); setVConfirmPassword("");
     setDName(""); setDEmail(""); setDPhone(""); setDAddress(""); setDPan(""); setDPassword(""); setDConfirmPassword("");
     setNOrgName(""); setNRegNumber(""); setNContactPerson(""); setNEmail(""); setNWebsite(""); setNPassword(""); setNConfirmPassword("");
-    setAName(""); setAEmail(""); setAEmployeeId(""); setAPassword(""); setAConfirmPassword("");
   };
 
   return (

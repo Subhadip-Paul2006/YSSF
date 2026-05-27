@@ -4,13 +4,16 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: yssf
-      POSTGRES_PASSWORD: yssf-dev-password
-      POSTGRES_DB: yssf
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-yssf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yssf-dev-password}
+      POSTGRES_DB: ${POSTGRES_DB:-yssf}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yssf}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -21,11 +24,12 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=development
-      - JWT_SECRET=yssf-dev-secret-change-in-production
-      - DATABASE_URL=postgresql://yssf:yssf-dev-password@db:5432/yssf
+      - JWT_SECRET=${JWT_SECRET:-yssf-dev-secret-change-in-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-yssf}:${POSTGRES_PASSWORD:-yssf-dev-password}@db:5432/${POSTGRES_DB:-yssf}
       - FRONTEND_URL=http://localhost:3000
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build:

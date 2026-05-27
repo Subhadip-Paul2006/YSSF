@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { SignJWT } from "jose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { SECRET, getUserFromRequest } from "../lib/auth.js";
@@ -10,7 +11,7 @@ export const authRoutes = Router();
 const PUBLIC_ROLES = ["volunteer", "donor", "ngo_partner"] as const;
 
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 999999).toString();
 }
 
 const registerSchema = z.object({
@@ -100,8 +101,10 @@ authRoutes.post("/register", async (req, res) => {
       },
     });
 
-    // TODO: Send OTP via email service (SendGrid, nodemailer, etc.)
-    console.log(`[EMAIL VERIFICATION] OTP for ${email}: ${otp}`);
+    // TODO: Integrate real email service (SendGrid, nodemailer, etc.)
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[DEV] OTP for ${email}: ${otp}`);
+    }
 
     const token = await new SignJWT({ userId: user.id, role: user.role })
       .setProtectedHeader({ alg: "HS256" })
@@ -294,6 +297,23 @@ authRoutes.post("/login", async (req, res) => {
       return;
     }
 
+    if (!user.emailVerified) {
+      // Still issue token but flag unverified
+      const token = await new SignJWT({ userId: user.id, role: user.role })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("2h")
+        .sign(SECRET);
+
+      res.json({
+        success: true,
+        user: { id: user.id, name: user.name, role: user.role },
+        token,
+        emailVerified: false,
+        message: "Please verify your email to access all features.",
+      });
+      return;
+    }
+
     const token = await new SignJWT({ userId: user.id, role: user.role })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("2h")
@@ -303,7 +323,7 @@ authRoutes.post("/login", async (req, res) => {
       success: true,
       user: { id: user.id, name: user.name, role: user.role },
       token,
-      emailVerified: user.emailVerified,
+      emailVerified: true,
     });
   } catch (error) {
     console.error("Error logging in:", error);

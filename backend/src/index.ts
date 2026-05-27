@@ -60,8 +60,12 @@ const generalLimiter = rateLimit({
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/auth/register-full", authLimiter);
+app.use("/api/auth/verify-email", authLimiter);
+app.use("/api/auth/resend-verification", authLimiter);
 app.use("/api/verify/send-otp", authLimiter);
 app.use("/api/verify/send-link", authLimiter);
+app.use("/api/verify/verify-otp", authLimiter);
+app.use("/api/verify/verify-link", authLimiter);
 app.use("/api/contact", authLimiter);
 app.use("/api", generalLimiter);
 
