@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const SECRET = process.env.JWT_SECRET;
 
-if (!SECRET && process.env.NODE_ENV === "production") {
-  throw new Error("JWT_SECRET environment variable is required in production");
+if (!SECRET) {
+  console.warn("JWT_SECRET environment variable is not configured. Token verification will fail.");
 }
 
 function base64UrlToBytes(value: string) {

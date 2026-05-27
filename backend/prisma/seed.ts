@@ -62,8 +62,16 @@ async function main() {
   console.log("Seeding database...");
 
   console.log("  Creating demo users...");
-  await prisma.user.upsert({ where: { email: "soumya.chk101@gmail.com" }, update: {}, create: { id: "user-admin-001", name: "YSSF Admin", email: "soumya.chk101@gmail.com", phone: "9876543210", role: "ADMIN", location: "Kolkata, West Bengal", passwordHash: hashPassword("Soumya@933") } });
-  await prisma.user.upsert({ where: { email: "volunteer@yssf.org" }, update: {}, create: { id: "user-volunteer-001", name: "Priya Volunteer", email: "volunteer@yssf.org", phone: "9876543211", role: "VOLUNTEER", location: "Bankura, West Bengal", skills: "Teaching, First Aid, Event Management", availability: "Weekends", passwordHash: hashPassword("volunteer123") } });
+  await prisma.user.upsert({ 
+    where: { email: "soumya.chk101@gmail.com" }, 
+    update: { emailVerified: true }, 
+    create: { id: "user-admin-001", name: "YSSF Admin", email: "soumya.chk101@gmail.com", phone: "9876543210", role: "ADMIN", location: "Kolkata, West Bengal", passwordHash: hashPassword("Soumya@933"), emailVerified: true } 
+  });
+  await prisma.user.upsert({ 
+    where: { email: "volunteer@yssf.org" }, 
+    update: { emailVerified: true }, 
+    create: { id: "user-volunteer-001", name: "Priya Volunteer", email: "volunteer@yssf.org", phone: "9876543211", role: "VOLUNTEER", location: "Bankura, West Bengal", skills: "Teaching, First Aid, Event Management", availability: "Weekends", passwordHash: hashPassword("volunteer123"), emailVerified: true } 
+  });
 
   console.log("  Seeding campaigns...");
   for (const c of CAMPAIGNS) { await prisma.campaign.upsert({ where: { slug: c.slug }, update: c, create: c }); }
