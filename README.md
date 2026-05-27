@@ -4,6 +4,7 @@
 
 ### Project Architecture Overview
 
+
 | Category | Technology | Purpose / Usage |
 |---|---|---|
 | Frontend Framework | Next.js (TypeScript) | Main frontend framework for SSR, SEO, routing, and full-stack capabilities |
