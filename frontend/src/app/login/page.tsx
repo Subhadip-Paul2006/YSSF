@@ -316,7 +316,7 @@ export default function LoginPage() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="admin@yssf.org"
+                        placeholder="soumya.chk101@gmail.com"
                         className="w-full pl-10 pr-4 py-3 bg-surface-100/20 focus:bg-white rounded-2xl border border-primary-200 focus:border-accent-500 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-foreground transition-all"
                       />
                     </div>
@@ -401,7 +401,7 @@ export default function LoginPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => handleQuickLogin("admin@yssf.org", "admin123")}
+                            onClick={() => handleQuickLogin("soumya.chk101@gmail.com", "Soumya@933")}
                             className="p-2 bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 text-left font-heading text-xs font-bold rounded-xl border border-accent-500/20 cursor-pointer flex items-center gap-1.5"
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />

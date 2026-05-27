@@ -62,7 +62,7 @@ async function main() {
   console.log("Seeding database...");
 
   console.log("  Creating demo users...");
-  await prisma.user.upsert({ where: { email: "admin@yssf.org" }, update: {}, create: { id: "user-admin-001", name: "YSSF Admin", email: "admin@yssf.org", phone: "9876543210", role: "ADMIN", location: "Kolkata, West Bengal", passwordHash: hashPassword("admin123") } });
+  await prisma.user.upsert({ where: { email: "soumya.chk101@gmail.com" }, update: {}, create: { id: "user-admin-001", name: "YSSF Admin", email: "soumya.chk101@gmail.com", phone: "9876543210", role: "ADMIN", location: "Kolkata, West Bengal", passwordHash: hashPassword("Soumya@933") } });
   await prisma.user.upsert({ where: { email: "volunteer@yssf.org" }, update: {}, create: { id: "user-volunteer-001", name: "Priya Volunteer", email: "volunteer@yssf.org", phone: "9876543211", role: "VOLUNTEER", location: "Bankura, West Bengal", skills: "Teaching, First Aid, Event Management", availability: "Weekends", passwordHash: hashPassword("volunteer123") } });
 
   console.log("  Seeding campaigns...");
