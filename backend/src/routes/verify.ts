@@ -3,6 +3,8 @@ import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { getUserFromRequest } from "../lib/auth.js";
+import { sendOTPEmail, sendVerificationLinkEmail } from "../lib/email.js";
+
 
 export const verifyRoutes = Router();
 
@@ -62,11 +64,11 @@ verifyRoutes.post("/send-otp", async (req, res) => {
       },
     });
 
-    // TODO: Integrate real email service (SendGrid, nodemailer, etc.)
-    // Do NOT log OTP in production
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[DEV] OTP for ${email}: ${otp}`);
-    }
+    // Send OTP email
+    await sendOTPEmail(email, otp).catch((err) =>
+      console.error("Error sending OTP email:", err)
+    );
+
 
     res.json({ success: true, message: "If an account exists, OTP has been sent" });
   } catch (error) {
@@ -169,11 +171,12 @@ verifyRoutes.post("/send-link", async (req, res) => {
       },
     });
 
-    // TODO: Send email with verification link
-    if (process.env.NODE_ENV !== "production") {
-      const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify?token=${token}`;
-      console.log(`[DEV] Verification link for ${email}: ${verifyUrl}`);
-    }
+    const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify?token=${token}`;
+    // Send verification link email
+    await sendVerificationLinkEmail(email, verifyUrl).catch((err) =>
+      console.error("Error sending verification link email:", err)
+    );
+
 
     res.json({ success: true, message: "If an account exists, a verification link has been sent" });
   } catch (error) {

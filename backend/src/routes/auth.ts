@@ -5,6 +5,8 @@ import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { SECRET, getUserFromRequest } from "../lib/auth.js";
+import { sendOTPEmail } from "../lib/email.js";
+
 
 export const authRoutes = Router();
 
@@ -101,10 +103,11 @@ authRoutes.post("/register", async (req, res) => {
       },
     });
 
-    // TODO: Integrate real email service (SendGrid, nodemailer, etc.)
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[DEV] OTP for ${email}: ${otp}`);
-    }
+    // Send OTP email
+    await sendOTPEmail(email, otp).catch((err) =>
+      console.error("Error sending OTP email:", err)
+    );
+
 
     const token = await new SignJWT({ userId: user.id, role: user.role })
       .setProtectedHeader({ alg: "HS256" })
@@ -154,8 +157,11 @@ authRoutes.post("/send-verification", async (req, res) => {
       },
     });
 
-    // TODO: Send OTP via email service
-    console.log(`[EMAIL VERIFICATION] OTP for ${user.email}: ${otp}`);
+    // Send OTP email
+    await sendOTPEmail(user.email, otp).catch((err) =>
+      console.error("Error sending OTP email:", err)
+    );
+
 
     res.json({ success: true, message: "OTP sent to your email" });
   } catch (error) {
@@ -264,8 +270,11 @@ authRoutes.post("/resend-verification", async (req, res) => {
       },
     });
 
-    // TODO: Send OTP via email service
-    console.log(`[EMAIL VERIFICATION] OTP for ${email}: ${otp}`);
+    // Send OTP email
+    await sendOTPEmail(email, otp).catch((err) =>
+      console.error("Error sending OTP email:", err)
+    );
+
 
     res.json({ success: true, message: "If an account exists, OTP has been sent" });
   } catch (error) {
@@ -416,8 +425,11 @@ authRoutes.post("/register-full", async (req, res) => {
       },
     });
 
-    // TODO: Send OTP via email service
-    console.log(`[EMAIL VERIFICATION] OTP for ${email}: ${otp}`);
+    // Send OTP email
+    await sendOTPEmail(email, otp).catch((err) =>
+      console.error("Error sending OTP email:", err)
+    );
+
 
     const token = await new SignJWT({ userId: user.id, role: user.role })
       .setProtectedHeader({ alg: "HS256" })
