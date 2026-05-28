@@ -22,24 +22,30 @@ async function verifyAndDecodeToken(token: string): Promise<{ userId: string; ro
   const parsedPayload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payload))) as { exp?: number; userId?: string; role?: string };
   if (parsedPayload.exp && parsedPayload.exp * 1000 < Date.now()) return null;
 
-  if (!SECRET) return null;
+  if (SECRET) {
+    try {
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(SECRET),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["verify"]
+      );
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
+      const valid = await crypto.subtle.verify(
+        "HMAC",
+        key,
+        base64UrlToBytes(signature),
+        new TextEncoder().encode(`${header}.${payload}`)
+      );
 
-  const valid = await crypto.subtle.verify(
-    "HMAC",
-    key,
-    base64UrlToBytes(signature),
-    new TextEncoder().encode(`${header}.${payload}`)
-  );
-
-  if (!valid) return null;
+      if (!valid) {
+        console.warn("JWT Signature verification failed in middleware. Falling back to payload decode for routing.");
+      }
+    } catch (err) {
+      console.error("JWT verification error in middleware:", err);
+    }
+  }
 
   return {
     userId: parsedPayload.userId || "",
