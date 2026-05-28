@@ -15,6 +15,9 @@ import { verifyRoutes } from "./routes/verify.js";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for rate limiting behind reverse proxies (Render, Heroku, etc.)
+app.set("trust proxy", 1);
+
 // Security headers
 app.use(helmet());
 
@@ -79,9 +82,13 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
-// Health check
+// Health check & root routes
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+app.get("/", (_req, res) => {
+  res.json({ status: "ok", message: "YSSF API Backend is running" });
 });
 
 const server = app.listen(PORT, () => {
