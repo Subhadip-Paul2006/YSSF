@@ -316,7 +316,7 @@ export default function LoginPage() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="soumya.chk101@gmail.com"
+                        placeholder="name@example.com"
                         className="w-full pl-10 pr-4 py-3 bg-surface-100/20 focus:bg-white rounded-2xl border border-primary-200 focus:border-accent-500 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/20 text-foreground transition-all"
                       />
                     </div>
@@ -380,52 +380,54 @@ export default function LoginPage() {
                   </Link>
                 </p>
 
-                {/* Dev Mode Helper Expandable */}
-                <div className="border-t border-primary-100/70 pt-4 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowDevHelper(!showDevHelper)}
-                    className="w-full flex items-center justify-between text-left text-[10px] uppercase tracking-widest font-heading font-extrabold text-primary-900/40 hover:text-primary-900/70 transition-colors py-1 cursor-pointer"
-                  >
-                    <span>Developer quick accounts</span>
-                    <span>{showDevHelper ? "Hide" : "Show"}</span>
-                  </button>
-                  <AnimatePresence>
-                    {showDevHelper && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden space-y-2 pt-2.5"
-                      >
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleQuickLogin("soumya.chk101@gmail.com", "Soumya@933")}
-                            className="p-2 bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 text-left font-heading text-xs font-bold rounded-xl border border-accent-500/20 cursor-pointer flex items-center gap-1.5"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            <div className="flex flex-col leading-none">
-                              <span>Admin User</span>
-                              <span className="text-[8px] opacity-75">Click to fill</span>
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickLogin("volunteer@yssf.org", "volunteer123")}
-                            className="p-2 bg-primary-900/5 hover:bg-primary-900/10 text-primary-900 text-left font-heading text-xs font-bold rounded-xl border border-primary-900/10 cursor-pointer flex items-center gap-1.5"
-                          >
-                            <User className="w-3.5 h-3.5" />
-                            <div className="flex flex-col leading-none">
-                              <span>Volunteer</span>
-                              <span className="text-[8px] opacity-75">Click to fill</span>
-                            </div>
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                {/* Dev Mode Helper Expandable - Only rendered in development */}
+                {process.env.NODE_ENV !== "production" && (
+                  <div className="border-t border-primary-100/70 pt-4 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDevHelper(!showDevHelper)}
+                      className="w-full flex items-center justify-between text-left text-[10px] uppercase tracking-widest font-heading font-extrabold text-primary-900/40 hover:text-primary-900/70 transition-colors py-1 cursor-pointer"
+                    >
+                      <span>Developer quick accounts</span>
+                      <span>{showDevHelper ? "Hide" : "Show"}</span>
+                    </button>
+                    <AnimatePresence>
+                      {showDevHelper && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden space-y-2 pt-2.5"
+                        >
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin("soumya.chk101@gmail.com", "Soumya@933")}
+                              className="p-2 bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 text-left font-heading text-xs font-bold rounded-xl border border-accent-500/20 cursor-pointer flex items-center gap-1.5"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <div className="flex flex-col leading-none">
+                                <span>Admin User</span>
+                                <span className="text-[8px] opacity-75">Click to fill</span>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickLogin("volunteer@yssf.org", "volunteer123")}
+                              className="p-2 bg-primary-900/5 hover:bg-primary-900/10 text-primary-900 text-left font-heading text-xs font-bold rounded-xl border border-primary-900/10 cursor-pointer flex items-center gap-1.5"
+                            >
+                              <User className="w-3.5 h-3.5" />
+                              <div className="flex flex-col leading-none">
+                                <span>Volunteer</span>
+                                <span className="text-[8px] opacity-75">Click to fill</span>
+                              </div>
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
