@@ -1,21 +1,21 @@
 import nodemailer from "nodemailer";
 
 const isSmtpConfigured = !!(
-  process.env.SMTP_HOST &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASS
+  process.env.EMAIL_HOST &&
+  process.env.EMAIL_HOST_USER &&
+  process.env.EMAIL_HOST_PASSWORD
 );
 
 let transporter: nodemailer.Transporter | null = null;
 
 if (isSmtpConfigured) {
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_SECURE === "true",
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT || "587"),
+    secure: process.env.EMAIL_PORT === "465",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.EMAIL_HOST_USER,
+      pass: process.env.EMAIL_HOST_PASSWORD,
     },
   });
 }
@@ -31,7 +31,8 @@ export async function sendEmail({
   html: string;
   text?: string;
 }): Promise<boolean> {
-  const from = process.env.SMTP_FROM || `"YSSF Portal" <${process.env.SMTP_USER || "no-reply@yssf.org"}>`;
+  const from = process.env.DEFAULT_FROM_EMAIL || `"YSSF Portal" <${process.env.EMAIL_HOST_USER || "no-reply@yssf.org"}>`;
+
   
   if (transporter) {
     try {
