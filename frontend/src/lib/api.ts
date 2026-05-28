@@ -383,8 +383,19 @@ export async function apiSendVerificationLink(email: string) {
 }
 
 export async function apiVerifyLink(token: string) {
-  return apiFetch<{ success: boolean; message: string }>("/api/verify/verify-link", {
+  const data = await apiFetch<{
+    success: boolean;
+    message: string;
+    user?: { id: string; name: string; role: string };
+    token?: string;
+  }>("/api/verify/verify-link", {
     method: "POST",
     body: JSON.stringify({ token }),
   });
+
+  if (data.token) {
+    rememberSession(data.token);
+  }
+
+  return data;
 }

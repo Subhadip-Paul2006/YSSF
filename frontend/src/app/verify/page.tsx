@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2, ArrowLeft, Mail } from "lucide-react";
+import { apiVerifyLink } from "@/lib/api";
+import confetti from "canvas-confetti";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
@@ -13,6 +15,7 @@ function VerifyContent() {
 
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState<string>("Verifying your email address...");
+  const [targetDashboard, setTargetDashboard] = useState<string>("/dashboard");
 
   useEffect(() => {
     if (!token) {
@@ -23,33 +26,47 @@ function VerifyContent() {
 
     async function verifyToken() {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-        const res = await fetch(`${apiBase}/api/verify/verify-link`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
+        const data = await apiVerifyLink(token as string);
 
-        const data = await res.json();
-
-        if (res.ok && data.success) {
+        if (data.success) {
           setStatus("success");
-          setMessage("Your email has been successfully verified! You can now log in to your account.");
+          setMessage("Your email has been successfully verified! Redirecting to your dashboard...");
+          
+          const role = data.user?.role || "volunteer";
+          const roleMap: Record<string, string> = {
+            admin: "/dashboard/admin",
+            volunteer: "/dashboard/volunteer",
+            donor: "/dashboard/donor",
+            ngo_partner: "/dashboard/volunteer",
+          };
+          const dashboardPath = roleMap[role.toLowerCase()] || "/dashboard";
+          setTargetDashboard(dashboardPath);
+
+          // Celebrate with confetti
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 },
+            colors: ["#0B5D3B", "#8FD694", "#F4B400", "#FFFFFF"],
+          });
+
+          // Redirect to dashboard after 2 seconds
+          setTimeout(() => {
+            router.push(dashboardPath);
+          }, 2000);
         } else {
           setStatus("error");
-          setMessage(data.error || "The verification link is invalid or has expired.");
+          setMessage(data.message || "The verification link is invalid or has expired.");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Verification error:", err);
         setStatus("error");
-        setMessage("A network error occurred. Please try again later.");
+        setMessage(err.message || "A network error occurred. Please try again later.");
       }
     }
 
     verifyToken();
-  }, [token]);
+  }, [token, router]);
 
   return (
     <div className="bg-white/95 backdrop-blur-xl border border-primary-200/30 rounded-[32px] shadow-2xl p-8 md:p-10 relative overflow-hidden min-h-[380px] flex flex-col items-center justify-center text-center">
@@ -79,12 +96,16 @@ function VerifyContent() {
           <p className="font-sans text-sm text-primary-900/60 font-semibold max-w-sm mx-auto leading-relaxed">
             {message}
           </p>
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2 text-primary-900/60 text-xs font-semibold">
+              <Loader2 className="w-4 h-4 animate-spin text-primary-900" />
+              <span>Redirecting...</span>
+            </div>
             <Link
-              href="/login"
-              className="inline-flex w-full py-3.5 px-8 bg-primary-900 hover:bg-primary-800 text-white font-heading font-bold text-sm rounded-2xl transition-all shadow-md items-center justify-center cursor-pointer"
+              href={targetDashboard}
+              className="inline-flex w-full py-3 px-6 bg-primary-900 hover:bg-primary-800 text-white font-heading font-bold text-xs rounded-xl transition-all shadow-sm items-center justify-center cursor-pointer"
             >
-              Go to Sign In
+              Not redirecting? Click here
             </Link>
           </div>
         </motion.div>

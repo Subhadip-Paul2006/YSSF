@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import crypto from "crypto";
+import { SignJWT } from "jose";
 import { prisma } from "../lib/prisma.js";
-import { getUserFromRequest } from "../lib/auth.js";
+import { SECRET, getUserFromRequest } from "../lib/auth.js";
 import { sendOTPEmail, sendVerificationLinkEmail } from "../lib/email.js";
 
 
@@ -210,18 +211,37 @@ verifyRoutes.post("/verify-link", async (req, res) => {
       return;
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: verification.userId },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
     await prisma.$transaction([
       prisma.verification.update({
         where: { id: verification.id },
         data: { used: true },
       }),
       prisma.user.update({
-        where: { id: verification.userId },
+        where: { id: user.id },
         data: { emailVerified: true },
       }),
     ]);
 
-    res.json({ success: true, message: "Email verified successfully" });
+    const jwtToken = await new SignJWT({ userId: user.id, role: user.role })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("2h")
+      .sign(SECRET);
+
+    res.json({
+      success: true,
+      message: "Email verified successfully",
+      user: { id: user.id, name: user.name, role: user.role },
+      token: jwtToken,
+    });
   } catch (error) {
     console.error("Error verifying link:", error);
     res.status(500).json({ error: "Failed to verify link" });
