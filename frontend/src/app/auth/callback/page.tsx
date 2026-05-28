@@ -9,17 +9,12 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    async function handleCallback() {
-      const { data: { session }, error } = await supabase.auth.getSession();
+    let isMounted = true;
 
-      if (error) {
-        console.error("Auth callback error:", error);
-        router.push("/login?error=auth_failed");
-        return;
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
 
       if (session?.access_token) {
-        // Register/login the user in our backend with the Supabase token
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/google-supabase`, {
             method: "POST",
@@ -37,18 +32,40 @@ export default function AuthCallbackPage() {
           if (data.success && data.token) {
             // Store our JWT token
             document.cookie = `yssf-session=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 2}; SameSite=Strict${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
-            router.push("/dashboard");
+            
+            // Redirect directly to the appropriate dashboard
+            const userRole = data.user.role.toLowerCase();
+            const roleDashboard: Record<string, string> = {
+              admin: "/dashboard/admin",
+              volunteer: "/dashboard/volunteer",
+              donor: "/dashboard/donor",
+              ngo_partner: "/dashboard/volunteer",
+            };
+            router.push(roleDashboard[userRole] || "/dashboard");
             return;
           }
         } catch (err) {
           console.error("Backend auth error:", err);
+          router.push("/login?error=backend_failed");
+          return;
         }
       }
+    });
 
-      router.push("/login?error=no_session");
-    }
+    // Fallback: If after 4 seconds nothing happens, check session and redirect if empty
+    const timeout = setTimeout(async () => {
+      if (!isMounted) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login?error=no_session");
+      }
+    }, 4000);
 
-    handleCallback();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [router]);
 
   return (
