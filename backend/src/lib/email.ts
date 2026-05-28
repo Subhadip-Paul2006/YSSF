@@ -31,9 +31,68 @@ export async function sendEmail({
   html: string;
   text?: string;
 }): Promise<boolean> {
-  const from = process.env.DEFAULT_FROM_EMAIL || `"YSSF Portal" <${process.env.EMAIL_HOST_USER || "no-reply@yssf.org"}>`;
+  // 1. Try Resend HTTP API (if configured)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromEmail = process.env.DEFAULT_FROM_EMAIL || "onboarding@resend.dev";
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: fromEmail.includes("<") ? fromEmail : `YSSF Portal <${fromEmail}>`,
+          to: [to],
+          subject,
+          html,
+          text,
+        }),
+      });
 
-  
+      if (response.ok) {
+        return true;
+      } else {
+        const errText = await response.text();
+        console.error(`Resend API Error: ${response.status} - ${errText}`);
+      }
+    } catch (error) {
+      console.error("Failed to send email via Resend API:", error);
+    }
+  }
+
+  // 2. Try Brevo HTTP API (if configured)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const fromEmail = process.env.DEFAULT_FROM_EMAIL || "no-reply@yssf.org";
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+        },
+        body: JSON.stringify({
+          sender: { name: "YSSF Portal", email: fromEmail.replace(/.*<(.+)>.*/, "$1") },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text,
+        }),
+      });
+
+      if (response.ok) {
+        return true;
+      } else {
+        const errText = await response.text();
+        console.error(`Brevo API Error: ${response.status} - ${errText}`);
+      }
+    } catch (error) {
+      console.error("Failed to send email via Brevo API:", error);
+    }
+  }
+
+  // 3. Fallback to SMTP (if configured)
+  const from = process.env.DEFAULT_FROM_EMAIL || `"YSSF Portal" <${process.env.EMAIL_HOST_USER || "no-reply@yssf.org"}>`;
   if (transporter) {
     try {
       await transporter.sendMail({
