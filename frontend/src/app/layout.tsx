@@ -52,7 +52,6 @@ export default function RootLayout({
         {/* Page Content */}
         <main className="flex-grow">{children}</main>
 
-        {/* Footer */}
         <Footer />
         </AuthProvider>
       </body>

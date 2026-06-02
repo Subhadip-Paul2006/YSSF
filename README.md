@@ -4,6 +4,7 @@
 
 ### Project Architecture Overview
 
+
 | Category | Technology | Purpose / Usage |
 |---|---|---|
 | Frontend Framework | Next.js 16 (TypeScript) | Main frontend framework for dynamic page rendering and routing |
