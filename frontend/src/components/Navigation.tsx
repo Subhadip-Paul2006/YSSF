@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -20,6 +21,17 @@ const navLinks = [
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { user, loading, signOut } = useAuth();
+
+  const getDashboardPath = (role: string): string => {
+    const roleMap: Record<string, string> = {
+      admin: "/dashboard/admin",
+      volunteer: "/dashboard/volunteer",
+      donor: "/dashboard/donor",
+      ngo_partner: "/dashboard/volunteer",
+    };
+    return roleMap[role.toLowerCase()] || "/dashboard";
+  };
 
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/auth");
 
@@ -53,12 +65,33 @@ export default function Navigation() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden sm:inline-flex px-4 py-2 font-heading font-semibold text-sm text-primary-900 hover:text-primary-700 transition-colors">
-            Sign In
-          </Link>
-          <Link href="/register" className="hidden sm:inline-flex px-5 py-2.5 bg-primary-900 hover:bg-primary-800 text-white font-heading font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:shadow-primary-900/20 hover:-translate-y-0.5">
-            Join As Volunteer
-          </Link>
+          {!loading && (
+            user ? (
+              <>
+                <Link
+                  href={getDashboardPath(user.role)}
+                  className="hidden sm:inline-flex px-4 py-2 font-heading font-semibold text-sm text-primary-900 hover:text-primary-700 transition-colors"
+                >
+                  Dashboard ({user.name?.split(" ")[0] || "User"})
+                </Link>
+                <button
+                  onClick={signOut}
+                  className="hidden sm:inline-flex px-5 py-2.5 bg-primary-900 hover:bg-primary-800 text-white font-heading font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:shadow-primary-900/20 hover:-translate-y-0.5 cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="hidden sm:inline-flex px-4 py-2 font-heading font-semibold text-sm text-primary-900 hover:text-primary-700 transition-colors">
+                  Sign In
+                </Link>
+                <Link href="/register" className="hidden sm:inline-flex px-5 py-2.5 bg-primary-900 hover:bg-primary-800 text-white font-heading font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:shadow-primary-900/20 hover:-translate-y-0.5">
+                  Join As Volunteer
+                </Link>
+              </>
+            )
+          )}
           <Link href="/#donate" className="px-5 py-2.5 bg-accent-500 hover:bg-accent-600 text-primary-900 font-heading font-bold text-sm rounded-xl transition-all shadow-md shadow-accent-500/20 hover:shadow-lg hover:shadow-accent-500/35 hover:-translate-y-0.5 border-2 border-primary-900/10">
             Donate Now
           </Link>
@@ -96,20 +129,45 @@ export default function Navigation() {
                 </Link>
               ))}
               <div className="border-t border-primary-100 pt-3 mt-3 space-y-1">
-                <Link
-                  href="/login"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-primary-900 hover:bg-surface-100 transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/dashboard"
-                  onClick={() => setIsOpen(false)}
-                  className="block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-primary-900 hover:bg-surface-100 transition-colors"
-                >
-                  Dashboard
-                </Link>
+                {!loading && (
+                  user ? (
+                    <>
+                      <Link
+                        href={getDashboardPath(user.role)}
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-primary-900 hover:bg-surface-100 transition-colors"
+                      >
+                        Dashboard ({user.name || "User"})
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setIsOpen(false);
+                          signOut();
+                        }}
+                        className="w-full text-left block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        Sign Out
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-primary-900 hover:bg-surface-100 transition-colors"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/register"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-4 py-3 rounded-xl font-heading font-semibold text-sm text-primary-900 hover:bg-surface-100 transition-colors"
+                      >
+                        Join As Volunteer
+                      </Link>
+                    </>
+                  )
+                )}
                 <Link
                   href="/transparency"
                   onClick={() => setIsOpen(false)}
