@@ -66,6 +66,7 @@ export async function registerUser({
   const token = await generateToken(user.id, user.role);
 
   return {
+    success: true,
     user: { id: user.id, name: user.name, role: user.role },
     token,
     verificationRequired: true,
@@ -194,6 +195,7 @@ export async function loginUser(email: string, password: string) {
 
   if (!user.emailVerified) {
     return {
+      success: true,
       user: { id: user.id, name: user.name, role: user.role },
       token,
       emailVerified: false,
@@ -202,6 +204,7 @@ export async function loginUser(email: string, password: string) {
   }
 
   return {
+    success: true,
     user: { id: user.id, name: user.name, role: user.role },
     token,
     emailVerified: true,
@@ -277,6 +280,7 @@ export async function registerFullUser({
   const token = await generateToken(user.id, user.role);
 
   return {
+    success: true,
     user: { id: user.id, name: user.name, role: user.role },
     token,
     verificationRequired: true,
