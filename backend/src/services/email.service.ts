@@ -1,21 +1,22 @@
 import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
 
 const isSmtpConfigured = !!(
-  process.env.EMAIL_HOST &&
-  process.env.EMAIL_HOST_USER &&
-  process.env.EMAIL_HOST_PASSWORD
+  env.EMAIL_HOST &&
+  env.EMAIL_HOST_USER &&
+  env.EMAIL_HOST_PASSWORD
 );
 
 let transporter: nodemailer.Transporter | null = null;
 
 if (isSmtpConfigured) {
   transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT || "587"),
-    secure: process.env.EMAIL_PORT === "465",
+    host: env.EMAIL_HOST,
+    port: env.EMAIL_PORT || 587,
+    secure: env.EMAIL_PORT === 465,
     auth: {
-      user: process.env.EMAIL_HOST_USER,
-      pass: process.env.EMAIL_HOST_PASSWORD,
+      user: env.EMAIL_HOST_USER,
+      pass: env.EMAIL_HOST_PASSWORD,
     },
   });
 }
@@ -32,14 +33,14 @@ export async function sendEmail({
   text?: string;
 }): Promise<boolean> {
   // 1. Try Resend HTTP API (if configured)
-  if (process.env.RESEND_API_KEY) {
+  if (env.RESEND_API_KEY) {
     try {
-      const fromEmail = process.env.DEFAULT_FROM_EMAIL || "onboarding@resend.dev";
+      const fromEmail = env.DEFAULT_FROM_EMAIL || "onboarding@resend.dev";
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Authorization": `Bearer ${env.RESEND_API_KEY}`,
         },
         body: JSON.stringify({
           from: fromEmail.includes("<") ? fromEmail : `YSSF Portal <${fromEmail}>`,
@@ -62,14 +63,14 @@ export async function sendEmail({
   }
 
   // 2. Try Brevo HTTP API (if configured)
-  if (process.env.BREVO_API_KEY) {
+  if (env.BREVO_API_KEY) {
     try {
-      const fromEmail = process.env.DEFAULT_FROM_EMAIL || "no-reply@yssf.org";
+      const fromEmail = env.DEFAULT_FROM_EMAIL || "no-reply@yssf.org";
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": env.BREVO_API_KEY,
         },
         body: JSON.stringify({
           sender: { name: "YSSF Portal", email: fromEmail.replace(/.*<(.+)>.*/, "$1") },
@@ -92,7 +93,7 @@ export async function sendEmail({
   }
 
   // 3. Fallback to SMTP (if configured)
-  const from = process.env.DEFAULT_FROM_EMAIL || `"YSSF Portal" <${process.env.EMAIL_HOST_USER || "no-reply@yssf.org"}>`;
+  const from = env.DEFAULT_FROM_EMAIL || `"YSSF Portal" <${env.EMAIL_HOST_USER || "no-reply@yssf.org"}>`;
   if (transporter) {
     try {
       await transporter.sendMail({
@@ -106,7 +107,7 @@ export async function sendEmail({
     } catch (error) {
       console.error(`Failed to send email via SMTP to ${to}:`, error);
       // Fall back to logging in development
-      if (process.env.NODE_ENV !== "production") {
+      if (env.NODE_ENV !== "production") {
         console.log(`[FALLBACK DEV EMAIL] To: ${to}\nSubject: ${subject}\nBody:\n${text || html}`);
         return true;
       }
