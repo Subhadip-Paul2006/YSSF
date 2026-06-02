@@ -56,6 +56,26 @@ export default function LoginPage() {
     return () => clearInterval(interval);
   }, [timer, showOtpScreen]);
 
+  // Read query parameters for errors (such as Google OAuth failures) on load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errParam = params.get("error");
+      if (errParam) {
+        if (errParam === "backend_failed") {
+          setError("Backend authentication failed. Please try again.");
+        } else if (errParam === "no_session") {
+          setError("No active session found. Please sign in again.");
+        } else if (errParam === "google_failed") {
+          const details = params.get("details");
+          setError(details ? `Google login failed: ${details}` : "Google login failed.");
+        } else {
+          setError(errParam);
+        }
+      }
+    }
+  }, []);
+
   const getDashboardPath = (role: string): string => {
     const roleMap: Record<string, string> = {
       admin: "/dashboard/admin",
