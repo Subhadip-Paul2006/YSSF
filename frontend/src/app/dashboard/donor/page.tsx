@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Heart,
@@ -12,8 +12,16 @@ import {
   Calendar,
   Download,
   ArrowUpRight,
+  X,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
-import { apiGetDashboardStats, apiGetDonationHistory, type DashboardStatsResponse } from "@/lib/api";
+import {
+  apiGetDashboardStats,
+  apiGetDonationHistory,
+  apiUpdateProfile,
+  type DashboardStatsResponse,
+} from "@/lib/api";
 
 interface DonationWithCampaign {
   id: string;
@@ -21,6 +29,8 @@ interface DonationWithCampaign {
   createdAt: string | Date;
   campaign?: { id: string; title: string; goal?: number; raised?: number; status?: string } | null;
 }
+
+const PREDEFINED_CAUSES = ["Education", "Environment", "Health", "Youth Empowerment", "Women Welfare", "Disaster Relief"];
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val);
@@ -75,6 +85,21 @@ export default function DonorDashboardPage() {
   const [donations, setDonations] = useState<DonationWithCampaign[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Profile Edit States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [panTaxId, setPanTaxId] = useState("");
+  const [address, setAddress] = useState("");
+  const [selectedCauses, setSelectedCauses] = useState<string[]>([]);
+  const [editLoading, setEditLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   useEffect(() => {
     Promise.all([apiGetDashboardStats(), apiGetDonationHistory()])
       .then(([stats, history]) => {
@@ -92,14 +117,108 @@ export default function DonorDashboardPage() {
       });
   }, [router]);
 
+  useEffect(() => {
+    if (dashData) {
+      setName(dashData.user.name || "");
+      setPhone(dashData.user.phone || "");
+      setPanTaxId(dashData.user.panTaxId || "");
+      setAddress(dashData.user.address || "");
+      const causes = dashData.user.preferredCauses
+        ? dashData.user.preferredCauses.split(",").map((c) => c.trim()).filter(Boolean)
+        : [];
+      setSelectedCauses(causes);
+    }
+  }, [dashData]);
+
+  const toggleCause = (cause: string) => {
+    if (selectedCauses.includes(cause)) {
+      setSelectedCauses(selectedCauses.filter((c) => c !== cause));
+    } else {
+      setSelectedCauses([...selectedCauses, cause]);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditLoading(true);
+    try {
+      await apiUpdateProfile({
+        name,
+        phone,
+        panTaxId,
+        address,
+        preferredCauses: selectedCauses.join(", "),
+      });
+      showToast("Profile updated successfully!");
+      setIsEditModalOpen(false);
+      const updatedStats = await apiGetDashboardStats();
+      setDashData(updatedStats);
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      showToast(err instanceof Error ? err.message : "Failed to update profile", "error");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDownloadCertificate = () => {
+    if (!dashData) return;
+    const { user, stats } = dashData;
+    const pan = user.panTaxId || "Not Provided";
+    const totalStr = formatCurrency(stats.totalDonated);
+    const dateStr = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+    
+    const content = `========================================================================
+                      YOUTH SAKTI SOCIAL FOUNDATION (YSSF)
+                      80G TAX EXEMPTION CERTIFICATE / RECEIPT
+========================================================================
+
+Receipt Date: ${dateStr}
+Certificate No: YSSF-80G-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}
+
+DONOR INFORMATION
+-----------------
+Donor Name: ${user.name || "Friend"}
+Email Address: ${user.email}
+Phone Number: ${user.phone || "Not Provided"}
+Permanent Account Number (PAN): ${pan}
+Address: ${user.address || "Not Provided"}
+
+EXEMPTION DETAILS
+-----------------
+Financial Year: ${new Date().getMonth() >= 3 ? `${new Date().getFullYear()}-${new Date().getFullYear() + 1}` : `${new Date().getFullYear() - 1}-${new Date().getFullYear()}`}
+Section: Section 80G of the Income Tax Act, 1961
+Total Amount Contributed: ${totalStr}
+Exemption Rate: 50% eligible for exemption under Section 80G
+
+Summary of Donations:
+${donations.map((d, index) => `${index + 1}. Date: ${formatDate(d.createdAt)} | Campaign: ${d.campaign?.title || "General Donation"} | Amount: ${formatCurrency(d.amount)}`).join("\n")}
+
+------------------------------------------------------------------------
+This is a computer-generated certificate. No physical signature is required.
+Thank you for your generous support of Youth Sakti Social Foundation!
+Youth Energy for Social Impact.
+========================================================================`;
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `YSSF_80G_Tax_Certificate_${user.name?.replace(/\s+/g, "_") || "Donor"}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("80G certificate downloaded successfully!");
+  };
+
   if (loading) return <DonorSkeleton />;
   if (!dashData) return null;
 
   const DONOR_STATS = [
-    { label: "Total Donated", value: formatCurrency(dashData.stats.totalDonated), icon: Heart, color: "text-alert-500" },
-    { label: "Campaigns Supported", value: String(new Set(donations.filter((d) => d.campaign).map((d) => d.campaign!.id)).size), icon: TrendingUp, color: "text-primary-900" },
-    { label: "Total Donations", value: String(donations.length), icon: Receipt, color: "text-accent-600" },
-    { label: "Impact Score", value: String(dashData.stats.impactScore), icon: Calendar, color: "text-primary-700" },
+    { label: "Total Donated", value: formatCurrency(dashData.stats.totalDonated), icon: Heart, color: "text-alert-500", bg: "bg-alert-500/10" },
+    { label: "Campaigns Supported", value: String(new Set(donations.filter((d) => d.campaign).map((d) => d.campaign!.id)).size), icon: TrendingUp, color: "text-primary-900", bg: "bg-primary-900/10" },
+    { label: "Total Donations", value: String(donations.length), icon: Receipt, color: "text-accent-600", bg: "bg-accent-500/10" },
+    { label: "Impact Score", value: String(dashData.stats.impactScore), icon: Calendar, color: "text-primary-700", bg: "bg-primary-700/10" },
   ];
 
   const activeCampaigns = Array.from(
@@ -126,17 +245,29 @@ export default function DonorDashboardPage() {
         </Link>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-alert-500/10 text-alert-500">
-              <Heart className="w-6 h-6" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
+        >
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-xl bg-alert-500/10 text-alert-500">
+                <Heart className="w-6 h-6" />
+              </div>
+              <span className="font-display font-semibold text-primary-700 uppercase tracking-widest text-sm">Donor Dashboard</span>
             </div>
-            <span className="font-display font-semibold text-primary-700 uppercase tracking-widest text-sm">Donor Dashboard</span>
+            <h1 className="font-heading font-extrabold text-4xl text-primary-900 leading-tight">
+              Welcome, <span className="handwritten-highlight inline-block font-handwritten text-accent-500">{dashData.user.name || "Donor"}</span>
+            </h1>
+            <p className="font-sans text-foreground/80 mt-2">Track your donations, download tax receipts, and see your impact.</p>
           </div>
-          <h1 className="font-heading font-extrabold text-4xl text-primary-900 leading-tight">
-            Your <span className="handwritten-highlight inline-block font-handwritten text-accent-500">Contributions</span>
-          </h1>
-          <p className="font-sans text-foreground/80 mt-2">Track your donations, download tax receipts, and see your impact.</p>
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="px-5 py-2.5 bg-primary-900 hover:bg-primary-850 text-white font-heading font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer self-start sm:self-auto"
+          >
+            Edit Profile
+          </button>
         </motion.div>
 
         {/* Stats */}
@@ -144,8 +275,16 @@ export default function DonorDashboardPage() {
           {DONOR_STATS.map((stat, i) => {
             const Icon = stat.icon;
             return (
-              <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="yssf-card p-5 bg-white border-primary-200/40 text-center">
-                <Icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="yssf-card p-5 bg-white border-primary-200/40 text-center"
+              >
+                <div className={`inline-flex p-2 rounded-full ${stat.bg} ${stat.color} mb-2`}>
+                  <Icon className="w-5 h-5" />
+                </div>
                 <p className="font-heading font-extrabold text-2xl text-primary-900">{stat.value}</p>
                 <p className="font-sans text-xs text-foreground/60 mt-1">{stat.label}</p>
               </motion.div>
@@ -175,7 +314,7 @@ export default function DonorDashboardPage() {
                         <td className="p-4 font-heading font-semibold text-sm text-primary-900">{donation.campaign?.title || "General Donation"}</td>
                         <td className="p-4 text-right font-heading font-bold text-sm text-primary-900">{formatCurrency(donation.amount)}</td>
                         <td className="p-4 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary-900/10 text-primary-900 text-xs font-heading font-semibold">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-900/10 text-primary-900 text-xs font-heading font-semibold">
                             <Receipt className="w-3 h-3" /> Issued
                           </span>
                         </td>
@@ -193,8 +332,61 @@ export default function DonorDashboardPage() {
 
           {/* Active Campaigns + Tax Certificate */}
           <div className="lg:col-span-5 space-y-8">
+            {/* Donor Info Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="yssf-card p-6 bg-white border-primary-200/30 shadow-sm"
+            >
+              <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-4">Donor Profile</h2>
+              <div className="space-y-3.5">
+                <div className="flex justify-between border-b border-primary-100/50 pb-2">
+                  <span className="text-xs text-foreground/60 font-sans">PAN / Tax ID</span>
+                  <span className="text-xs font-heading font-bold text-primary-900">{dashData.user.panTaxId || "Not Provided"}</span>
+                </div>
+                <div className="flex justify-between border-b border-primary-100/50 pb-2">
+                  <span className="text-xs text-foreground/60 font-sans">Phone</span>
+                  <span className="text-xs font-heading font-bold text-primary-900">{dashData.user.phone || "Not Provided"}</span>
+                </div>
+                <div className="flex justify-between border-b border-primary-100/50 pb-2">
+                  <span className="text-xs text-foreground/60 font-sans">Preferred Causes</span>
+                  <span className="text-xs font-heading font-bold text-primary-900 max-w-[200px] truncate" title={dashData.user.preferredCauses || ""}>
+                    {dashData.user.preferredCauses || "Not Provided"}
+                  </span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="text-xs text-foreground/60 font-sans">Address</span>
+                  <span className="text-xs font-heading font-bold text-primary-900 max-w-[200px] truncate" title={dashData.user.address || ""}>
+                    {dashData.user.address || "Not Provided"}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Tax Exemption Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="yssf-card p-6 bg-primary-900 text-white"
+            >
+              <Receipt className="w-8 h-8 text-accent-500 mb-3" />
+              <h3 className="font-heading font-extrabold text-lg mb-2">80G Tax Exemption</h3>
+              <p className="font-sans text-sm text-primary-200 mb-4">
+                Download your tax exemption certificate for the current financial year. YSSF is registered under Section 80G.
+              </p>
+              <button
+                onClick={handleDownloadCertificate}
+                className="w-full py-3 bg-accent-500 hover:bg-accent-600 text-primary-900 font-heading font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Download className="w-4 h-4" /> Download Certificate
+              </button>
+            </motion.div>
+
+            {/* Campaigns Supported */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-4">Campaigns You&apos;ve Supported</h2>
+              <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-4">Campaigns Supported</h2>
               {activeCampaigns.length > 0 ? (
                 <div className="space-y-4">
                   {activeCampaigns.map((campaign, i) => {
@@ -208,7 +400,13 @@ export default function DonorDashboardPage() {
                         {campaign.goal && campaign.goal > 0 && (
                           <>
                             <div className="w-full h-2.5 bg-surface-100 rounded-full overflow-hidden mb-1">
-                              <motion.div initial={{ width: 0 }} whileInView={{ width: `${percent}%` }} viewport={{ once: true }} transition={{ duration: 1 }} className={`h-full ${campaignColors[i % campaignColors.length]} rounded-full`} />
+                              <motion.div
+                                initial={{ width: 0 }}
+                                whileInView={{ width: `${percent}%` }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1 }}
+                                className={`h-full ${campaignColors[i % campaignColors.length]} rounded-full`}
+                              />
                             </div>
                             <p className="font-sans text-[10px] text-foreground/50">{formatCurrency(campaign.raised)} of {formatCurrency(campaign.goal)}</p>
                           </>
@@ -227,16 +425,6 @@ export default function DonorDashboardPage() {
               )}
             </motion.div>
 
-            {/* Tax Certificate Download */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="yssf-card p-6 bg-primary-900 text-white">
-              <Receipt className="w-8 h-8 text-accent-500 mb-3" />
-              <h3 className="font-heading font-extrabold text-lg mb-2">80G Tax Certificate</h3>
-              <p className="font-sans text-sm text-primary-200 mb-4">Download your tax exemption certificate for the current financial year.</p>
-              <button className="w-full py-3 bg-accent-500 hover:bg-accent-600 text-primary-900 font-heading font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <Download className="w-4 h-4" /> Download Certificate
-              </button>
-            </motion.div>
-
             {/* Make a Donation CTA */}
             <Link href="/campaigns" className="flex items-center justify-between p-5 rounded-2xl bg-accent-500/10 border-2 border-accent-500/30 hover:border-accent-500 transition-all group">
               <div className="flex items-center gap-3">
@@ -250,6 +438,148 @@ export default function DonorDashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className={`fixed bottom-5 right-5 z-[100] flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-heading font-semibold ${
+                toast.type === "success"
+                  ? "bg-slate-900 border-primary-400 text-white"
+                  : "bg-red-950 border-red-800 text-red-200"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-accent-500 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-alert-500 shrink-0" />
+              )}
+              <span>{toast.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Profile Modal */}
+        <AnimatePresence>
+          {isEditModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsEditModalOpen(false)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-lg w-full z-10 flex flex-col max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                  <h3 className="font-heading font-extrabold text-xl text-slate-900">Edit Donor Profile</h3>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-655 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">PAN / Tax ID</label>
+                    <input
+                      type="text"
+                      value={panTaxId}
+                      onChange={(e) => setPanTaxId(e.target.value)}
+                      placeholder="e.g. ABCDE1234F"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Address</label>
+                    <textarea
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Enter billing address for tax receipt..."
+                      rows={2}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900 resize-none font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Preferred Causes</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PREDEFINED_CAUSES.map((cause) => {
+                        const isSelected = selectedCauses.includes(cause);
+                        return (
+                          <button
+                            key={cause}
+                            type="button"
+                            onClick={() => toggleCause(cause)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-heading font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-primary-900 text-white border-primary-900 shadow-sm"
+                                : "bg-slate-50 border-slate-200 text-slate-655 hover:bg-slate-100"
+                            }`}
+                          >
+                            {cause}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(false)}
+                      className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-heading font-bold text-xs rounded-xl cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editLoading}
+                      className="flex-1 py-3 bg-primary-900 hover:bg-primary-850 disabled:bg-primary-900/50 text-white font-heading font-bold text-xs rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      {editLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

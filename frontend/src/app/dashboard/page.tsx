@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -16,8 +16,11 @@ import {
   FileText,
   Shield,
   LogIn,
+  X,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
-import { apiGetDashboardStats, type DashboardStatsResponse } from "@/lib/api";
+import { apiGetDashboardStats, apiUpdateProfile, type DashboardStatsResponse } from "@/lib/api";
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val);
@@ -89,6 +92,19 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Profile Edit States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   useEffect(() => {
     apiGetDashboardStats()
       .then((result) => {
@@ -100,6 +116,31 @@ export default function DashboardPage() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (data) {
+      setName(data.user.name || "");
+      setPhone(data.user.phone || "");
+      setLocation(data.user.location || "");
+    }
+  }, [data]);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditLoading(true);
+    try {
+      await apiUpdateProfile({ name, phone, location });
+      showToast("Profile updated successfully!");
+      setIsEditModalOpen(false);
+      const updatedStats = await apiGetDashboardStats();
+      setData(updatedStats);
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      showToast(err instanceof Error ? err.message : "Failed to update profile", "error");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   if (loading) return <DashboardSkeleton />;
 
@@ -165,22 +206,30 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-10"
+          className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-primary-900/10 text-primary-900">
-              <LayoutDashboard className="w-6 h-6" />
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-xl bg-primary-900/10 text-primary-900">
+                <LayoutDashboard className="w-6 h-6" />
+              </div>
+              <span className="font-display font-semibold text-primary-700 uppercase tracking-widest text-sm">
+                Dashboard
+              </span>
             </div>
-            <span className="font-display font-semibold text-primary-700 uppercase tracking-widest text-sm">
-              Dashboard
-            </span>
+            <h1 className="font-heading font-extrabold text-4xl text-primary-900 leading-tight">
+              Welcome back, <span className="handwritten-highlight inline-block font-handwritten text-accent-500">{data.user.name || "Friend"}</span>
+            </h1>
+            <p className="font-sans text-foreground/80 mt-2">
+              Here&apos;s an overview of your YSSF ecosystem activity.
+            </p>
           </div>
-          <h1 className="font-heading font-extrabold text-4xl text-primary-900 leading-tight">
-            Welcome back, <span className="handwritten-highlight inline-block font-handwritten text-accent-500">{data.user.name || "Friend"}</span>
-          </h1>
-          <p className="font-sans text-foreground/80 mt-2">
-            Here&apos;s an overview of your YSSF ecosystem activity.
-          </p>
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="px-5 py-2.5 bg-primary-900 hover:bg-primary-850 text-white font-heading font-semibold text-sm rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer self-start sm:self-auto"
+          >
+            Edit Profile
+          </button>
         </motion.div>
 
         {/* Quick Stats */}
@@ -270,6 +319,112 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         </div>
+
+        {/* Toast Notification */}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className={`fixed bottom-5 right-5 z-[100] flex items-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-heading font-semibold ${
+                toast.type === "success"
+                  ? "bg-slate-900 border-primary-400 text-white"
+                  : "bg-red-950 border-red-800 text-red-200"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-accent-500 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-alert-500 shrink-0" />
+              )}
+              <span>{toast.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Profile Modal */}
+        <AnimatePresence>
+          {isEditModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsEditModalOpen(false)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-md w-full z-10 flex flex-col"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                  <h3 className="font-heading font-extrabold text-xl text-slate-900">Edit Profile</h3>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-650 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. +91 98765 43210"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-heading font-bold text-[11px] text-slate-500 uppercase tracking-wider block">Location (City)</label>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. Kolkata, WB"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-250 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-900/20 text-slate-900"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(false)}
+                      className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-heading font-bold text-xs rounded-xl cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editLoading}
+                      className="flex-1 py-3 bg-primary-900 hover:bg-primary-850 disabled:bg-primary-900/50 text-white font-heading font-bold text-xs rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      {editLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

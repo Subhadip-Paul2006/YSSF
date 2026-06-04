@@ -61,14 +61,14 @@ export default function AuthCallbackPage() {
       }
     });
 
-    // Fallback: If after 4 seconds nothing happens, check session and redirect if empty
+    // Fallback: If after 8 seconds nothing happens, check session and redirect if empty
     timeout = setTimeout(async () => {
       if (!isMounted) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push("/login?error=no_session");
       }
-    }, 4000);
+    }, 8000);
 
     return () => {
       isMounted = false;

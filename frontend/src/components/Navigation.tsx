@@ -34,8 +34,53 @@ export default function Navigation() {
   };
 
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/auth");
+  const isDashboardPage = pathname.startsWith("/dashboard");
 
   if (isAuthPage) return null;
+
+  if (isDashboardPage) {
+    return (
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-primary-900/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group shrink-0">
+            <div className="w-8 h-8 bg-primary-900 rounded-full flex items-center justify-center text-accent-500 font-display text-base font-bold border border-primary-400 group-hover:scale-105 transition-transform duration-300">
+              YS
+            </div>
+            <div className="flex flex-col">
+              <span className="font-heading font-extrabold text-primary-900 text-sm leading-none tracking-tight">YOUTH SAKTI</span>
+              <span className="font-display font-medium text-primary-900/70 text-xs tracking-wide">Dashboard</span>
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            {!loading && user && (
+              <>
+                <span className="font-heading font-semibold text-[10px] text-primary-900 bg-primary-900/10 px-2 py-1 rounded-full uppercase tracking-wider">
+                  {user.role}
+                </span>
+                <span className="hidden md:inline font-sans text-sm text-foreground/80">
+                  {user.name || user.email}
+                </span>
+                <button
+                  onClick={signOut}
+                  className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-heading font-semibold text-xs rounded-xl transition-all shadow-md shadow-primary-900/10 hover:shadow-lg hover:shadow-primary-900/20 hover:-translate-y-0.5 cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </>
+            )}
+            <Link
+              href="/"
+              className="px-4 py-2 border border-primary-900/15 hover:bg-surface-100 text-primary-900 font-heading font-semibold text-xs rounded-xl transition-colors"
+            >
+              Back to Site
+            </Link>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-primary-900/10">

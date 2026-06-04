@@ -6,10 +6,20 @@ const userSelect = {
   name: true,
   email: true,
   role: true,
+  roleLevel: true,
   phone: true,
   location: true,
   skills: true,
   availability: true,
+  panTaxId: true,
+  orgName: true,
+  regNumber: true,
+  website: true,
+  address: true,
+  mission: true,
+  preferredCauses: true,
+  emergencyName: true,
+  emergencyPhone: true,
   createdAt: true,
 };
 
@@ -114,3 +124,81 @@ export async function getGalleryItems(category?: string) {
     orderBy: { date: "desc" },
   });
 }
+
+export async function deleteUser(userId: string) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Delete verifications
+    await tx.verification.deleteMany({ where: { userId } });
+    
+    // 2. Set userId: null for event registrations
+    await tx.eventRegistration.updateMany({
+      where: { userId },
+      data: { userId: null },
+    });
+    
+    // 3. Set userId: null for donations
+    await tx.donation.updateMany({
+      where: { userId },
+      data: { userId: null },
+    });
+    
+    // 4. Delete user
+    return await tx.user.delete({ where: { id: userId } });
+  });
+}
+
+export async function verifyNgo(userId: string, status: string) {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { roleLevel: status },
+    select: { id: true, name: true, email: true, role: true, roleLevel: true },
+  });
+}
+
+export async function updateCampaignStatus(campaignId: string, status: string) {
+  return await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { status },
+  });
+}
+
+export async function updateBlogStatus(postId: string, published: boolean) {
+  return await prisma.blogPost.update({
+    where: { id: postId },
+    data: { published },
+  });
+}
+
+export async function updateUserProfile(userId: string, data: any) {
+  const allowedFields = [
+    "name",
+    "phone",
+    "location",
+    "skills",
+    "availability",
+    "emergencyName",
+    "emergencyPhone",
+    "panTaxId",
+    "orgName",
+    "regNumber",
+    "website",
+    "address",
+    "mission",
+    "preferredCauses",
+  ];
+
+  const updateData: Record<string, any> = {};
+  for (const key of allowedFields) {
+    if (data[key] !== undefined) {
+      updateData[key] = data[key];
+    }
+  }
+
+  return await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+    select: userSelect,
+  });
+}
+
+

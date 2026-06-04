@@ -97,7 +97,21 @@ export interface DashboardStatsResponse {
     name: string | null;
     email: string;
     role?: string;
+    phone?: string | null;
+    location?: string | null;
     skills?: string | null;
+    availability?: string | null;
+    emergencyName?: string | null;
+    emergencyPhone?: string | null;
+    panTaxId?: string | null;
+    orgName?: string | null;
+    regNumber?: string | null;
+    website?: string | null;
+    address?: string | null;
+    mission?: string | null;
+    preferredCauses?: string | null;
+    roleLevel?: string | null;
+    createdAt?: string | Date;
     profile?: { skills?: string[]; role?: string } | null;
   };
   stats: {
@@ -124,6 +138,20 @@ export interface UserProfile {
   name: string | null;
   email: string;
   role: string;
+  roleLevel?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  skills?: string | null;
+  availability?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+  panTaxId?: string | null;
+  orgName?: string | null;
+  regNumber?: string | null;
+  website?: string | null;
+  address?: string | null;
+  mission?: string | null;
+  preferredCauses?: string | null;
   createdAt: Date;
   profile?: { role?: string } | null;
 }
@@ -358,6 +386,42 @@ export async function apiGetGalleryItems(category?: string) {
   const qs = params.toString();
   return apiFetch<GalleryItem[]>(`/api/dashboard/gallery${qs ? `?${qs}` : ""}`);
 }
+
+export async function apiDeleteUser(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/dashboard/users/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function apiVerifyNgo(id: string, status: "approved" | "rejected" | "pending") {
+  return apiFetch<{ success: boolean; user: UserProfile }>(`/api/dashboard/users/${id}/verify-ngo`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiUpdateCampaignStatus(id: string, status: string) {
+  return apiFetch<{ success: boolean; campaign: Campaign }>(`/api/dashboard/campaigns/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiUpdateBlogStatus(id: string, published: boolean) {
+  return apiFetch<{ success: boolean; post: BlogPost }>(`/api/dashboard/blog/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ published }),
+  });
+}
+
+export async function apiUpdateProfile(data: Record<string, unknown>) {
+  return apiFetch<{ success: boolean; user: UserProfile }>("/api/dashboard/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+
 
 // ---- Verification ----
 
