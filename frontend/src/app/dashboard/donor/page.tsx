@@ -27,7 +27,7 @@ interface DonationWithCampaign {
   id: string;
   amount: number;
   createdAt: string | Date;
-  campaign?: { id: string; title: string; goal?: number; raised?: number; status?: string } | null;
+  campaign?: { id: string; title: string; goal?: number; raised?: number; category?: string; status?: string } | null;
 }
 
 const PREDEFINED_CAUSES = ["Education", "Environment", "Health", "Youth Empowerment", "Women Welfare", "Disaster Relief"];
@@ -211,6 +211,52 @@ Youth Energy for Social Impact.
     showToast("80G certificate downloaded successfully!");
   };
 
+  const handleDownloadSingleReceipt = (donation: DonationWithCampaign) => {
+    if (!dashData) return;
+    const { user } = dashData;
+    const amountStr = formatCurrency(donation.amount);
+    const dateStr = formatDate(donation.createdAt);
+    const receiptNo = `YSSF-REC-${donation.id.slice(-6).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const pan = user.panTaxId || "Not Provided";
+
+    const content = `========================================================================
+                      YOUTH SAKTI SOCIAL FOUNDATION (YSSF)
+                          OFFICIAL DONATION RECEIPT
+========================================================================
+
+Receipt Number: ${receiptNo}
+Date of Receipt: ${dateStr}
+
+DONOR DETAILS
+-------------
+Donor Name: ${user.name || "Friend"}
+Donor Email: ${user.email}
+Phone Number: ${user.phone || "Not Provided"}
+Permanent Account Number (PAN): ${pan}
+Address: ${user.address || "Not Provided"}
+
+DONATION DETAILS
+----------------
+Campaign Supported: ${donation.campaign?.title || "General Donation"}
+Amount Received: ${amountStr}
+Payment Reference: Successful (Simulated)
+80G Exemption: Eligible for 50% deduction under Section 80G of IT Act, 1961
+
+Thank you for supporting Youth Sakti Social Foundation!
+This is a computer-generated receipt and requires no physical signature.
+========================================================================`;
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `YSSF_Receipt_${receiptNo}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Receipt ${receiptNo} downloaded!`);
+  };
+
   if (loading) return <DonorSkeleton />;
   if (!dashData) return null;
 
@@ -235,6 +281,13 @@ Youth Energy for Social Impact.
     }, new Map<string, { id: string; title: string; goal?: number; raised: number; status?: string }>())
   ).map(([, v]) => v);
 
+  const categoryBreakdown = donations.reduce((acc, d) => {
+    const category = d.campaign?.category || "General";
+    acc[category] = (acc[category] || 0) + d.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const totalDonated = dashData.stats.totalDonated;
   const campaignColors = ["bg-primary-900", "bg-alert-500", "bg-accent-500", "bg-primary-700", "bg-warning-500"];
 
   return (
@@ -314,9 +367,13 @@ Youth Energy for Social Impact.
                         <td className="p-4 font-heading font-semibold text-sm text-primary-900">{donation.campaign?.title || "General Donation"}</td>
                         <td className="p-4 text-right font-heading font-bold text-sm text-primary-900">{formatCurrency(donation.amount)}</td>
                         <td className="p-4 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-900/10 text-primary-900 text-xs font-heading font-semibold">
-                            <Receipt className="w-3 h-3" /> Issued
-                          </span>
+                          <button
+                            onClick={() => handleDownloadSingleReceipt(donation)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-900/10 hover:bg-primary-900 hover:text-white text-primary-900 text-xs font-heading font-semibold transition-all cursor-pointer border border-transparent hover:border-primary-850"
+                            title="Download Donation Receipt"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </button>
                         </td>
                       </tr>
                     )) : (
@@ -364,11 +421,56 @@ Youth Energy for Social Impact.
               </div>
             </motion.div>
 
-            {/* Tax Exemption Card */}
+            {/* Category Breakdown */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
+              className="yssf-card p-6 bg-white border-primary-200/30 shadow-sm"
+            >
+              <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-2">Category Distribution</h2>
+              <p className="font-sans text-xs text-foreground/60 mb-4">See how your donations are split across cause categories.</p>
+              {totalDonated > 0 ? (
+                <div className="space-y-4">
+                  {/* Stacked Progress Bar */}
+                  <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                    {Object.entries(categoryBreakdown).map(([category, amount], idx) => {
+                      const percentage = Math.round((amount / totalDonated) * 100);
+                      if (percentage === 0) return null;
+                      return (
+                        <div
+                          key={category}
+                          style={{ width: `${percentage}%` }}
+                          className={`${campaignColors[idx % campaignColors.length]} h-full transition-all`}
+                          title={`${category}: ${percentage}%`}
+                        />
+                      );
+                    })}
+                  </div>
+                  {/* Legend Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(categoryBreakdown).map(([category, amount], idx) => {
+                      const percentage = Math.round((amount / totalDonated) * 100);
+                      return (
+                        <div key={category} className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${campaignColors[idx % campaignColors.length]}`} />
+                          <span className="font-heading font-bold text-xs text-primary-900">{category}</span>
+                          <span className="font-sans text-[10px] text-foreground/50">({percentage}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="font-sans text-xs text-foreground/50 text-center py-4">No donation distribution data available.</p>
+              )}
+            </motion.div>
+
+            {/* Tax Exemption Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
               className="yssf-card p-6 bg-primary-900 text-white"
             >
               <Receipt className="w-8 h-8 text-accent-500 mb-3" />
@@ -385,7 +487,7 @@ Youth Energy for Social Impact.
             </motion.div>
 
             {/* Campaigns Supported */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
               <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-4">Campaigns Supported</h2>
               {activeCampaigns.length > 0 ? (
                 <div className="space-y-4">

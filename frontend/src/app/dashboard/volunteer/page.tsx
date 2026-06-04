@@ -176,6 +176,44 @@ export default function VolunteerDashboardPage() {
     { label: "Total Donated", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(data.stats.totalDonated), icon: Heart, color: "text-alert-500", bg: "bg-alert-500/10" },
   ];
 
+  const badges = [
+    {
+      name: "Bronze Helper",
+      description: "Attend at least 1 event",
+      unlocked: data.stats.eventsAttended >= 1,
+      gradient: "from-amber-600 to-amber-800",
+      icon: Award,
+    },
+    {
+      name: "Silver Catalyst",
+      description: "Attend at least 3 events",
+      unlocked: data.stats.eventsAttended >= 3,
+      gradient: "from-slate-400 to-slate-600",
+      icon: Award,
+    },
+    {
+      name: "Gold Champion",
+      description: "Attend at least 5 events",
+      unlocked: data.stats.eventsAttended >= 5,
+      gradient: "from-yellow-500 via-amber-500 to-yellow-600",
+      icon: Award,
+    },
+    {
+      name: "Hour Master",
+      description: "Log at least 20 volunteer hours",
+      unlocked: data.stats.volunteerHours >= 20,
+      gradient: "from-indigo-500 to-purple-650",
+      icon: Clock,
+    },
+    {
+      name: "Impact Hero",
+      description: "Reach an impact score of 50",
+      unlocked: data.stats.impactScore >= 50,
+      gradient: "from-emerald-500 to-teal-700",
+      icon: Heart,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-surface-100/40 via-white to-surface-100/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -325,12 +363,42 @@ export default function VolunteerDashboardPage() {
             {/* Achievement Badges */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <h2 className="font-heading font-extrabold text-xl text-primary-900 mb-4">Achievement Badges</h2>
-              <div className="p-6 rounded-2xl bg-white border border-primary-200/30 text-center">
-                <CheckCircle2 className="w-8 h-8 text-primary-900 mx-auto mb-2" />
-                <p className="font-heading font-bold text-sm text-primary-900">Keep Volunteering!</p>
-                <p className="font-sans text-xs text-foreground/60 mt-1">
-                  You&apos;ve attended {data.stats.eventsAttended} event{data.stats.eventsAttended !== 1 ? "s" : ""} and logged {data.stats.volunteerHours} volunteer hours. Badges unlock as you hit milestones!
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {badges.map((badge) => {
+                  const Icon = badge.icon;
+                  return (
+                    <div
+                      key={badge.name}
+                      className={`p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden flex items-center gap-3.5 ${
+                        badge.unlocked
+                          ? "bg-white border-primary-200/40 shadow-md shadow-primary-900/5 hover:-translate-y-1 hover:shadow-lg"
+                          : "bg-slate-50/50 border-slate-200/50 opacity-60"
+                      }`}
+                    >
+                      {badge.unlocked && (
+                        <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${badge.gradient}`} />
+                      )}
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                          badge.unlocked
+                            ? `bg-gradient-to-br ${badge.gradient} text-white`
+                            : "bg-slate-200 text-slate-400"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-bold text-sm text-primary-900 flex items-center gap-1">
+                          {badge.name}
+                          {!badge.unlocked && (
+                            <span className="text-[10px] text-slate-400 font-sans uppercase font-medium tracking-wider">(Locked)</span>
+                          )}
+                        </h4>
+                        <p className="font-sans text-[11px] text-foreground/60">{badge.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           </div>
