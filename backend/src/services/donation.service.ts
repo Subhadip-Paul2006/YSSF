@@ -46,15 +46,30 @@ export async function createDonation({
     throw new NotFoundError("Campaign not found");
   }
 
-  return await prisma.donation.create({
-    data: {
-      amount,
-      donorName,
-      donorEmail,
-      campaignId,
-      userId,
-      paymentRef: `PENDING-${Date.now()}`,
-    },
-    include: { campaign: true },
+  return await prisma.$transaction(async (tx) => {
+    // Create the donation record
+    const donation = await tx.donation.create({
+      data: {
+        amount,
+        donorName,
+        donorEmail,
+        campaignId,
+        userId,
+        paymentRef: `SUCCESS-${Date.now()}`,
+      },
+      include: { campaign: true },
+    });
+
+    // Increment campaign's raised total
+    await tx.campaign.update({
+      where: { id: campaignId },
+      data: {
+        raised: {
+          increment: amount,
+        },
+      },
+    });
+
+    return donation;
   });
 }
