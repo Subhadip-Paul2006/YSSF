@@ -203,11 +203,29 @@ export default function LoginPage() {
     }
   };
 
-  // Dev Quick Logins
-  const handleQuickLogin = (quickEmail: string, quickPass: string) => {
-    setEmail(quickEmail);
-    setPassword(quickPass);
-    setShowDevHelper(false);
+  // Dev Quick Logins — only call a server endpoint; credentials are never
+  // baked into the client bundle.
+  const handleQuickLogin = (role: "admin" | "volunteer") => {
+    setLoading(true);
+    setError(null);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/dev-quick-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.email || !data?.password) {
+          throw new Error(data?.error || "Dev login unavailable in this environment");
+        }
+        setEmail(data.email);
+        setPassword(data.password);
+        setShowDevHelper(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Dev login failed");
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -420,7 +438,7 @@ export default function LoginPage() {
                           <div className="grid grid-cols-2 gap-2">
                             <button
                               type="button"
-                              onClick={() => handleQuickLogin("soumya.chk101@gmail.com", "Soumya@933")}
+                              onClick={() => handleQuickLogin("admin")}
                               className="p-2 bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 text-left font-heading text-xs font-bold rounded-xl border border-accent-500/20 cursor-pointer flex items-center gap-1.5"
                             >
                               <ShieldCheck className="w-3.5 h-3.5" />
@@ -431,7 +449,7 @@ export default function LoginPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleQuickLogin("volunteer@yssf.org", "volunteer123")}
+                              onClick={() => handleQuickLogin("volunteer")}
                               className="p-2 bg-primary-900/5 hover:bg-primary-900/10 text-primary-900 text-left font-heading text-xs font-bold rounded-xl border border-primary-900/10 cursor-pointer flex items-center gap-1.5"
                             >
                               <User className="w-3.5 h-3.5" />

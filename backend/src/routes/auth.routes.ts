@@ -83,3 +83,8 @@ authRouter.post(
   "/signout",
   authController.signout
 );
+
+authRouter.post(
+  "/dev-quick-login",
+  authController.devQuickLogin
+);

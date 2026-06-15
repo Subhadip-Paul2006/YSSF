@@ -13,44 +13,48 @@ function base64UrlToBytes(value: string) {
 }
 
 async function verifyAndDecodeToken(token: string): Promise<{ userId: string; role: string } | null> {
+  // Strict signature verification. NEVER trust the payload if the signature
+  // doesn't verify — a forged-signature token must be rejected outright.
+  if (!SECRET) return null;
+
   const [header, payload, signature] = token.split(".");
   if (!header || !payload || !signature) return null;
 
   const parsedHeader = JSON.parse(new TextDecoder().decode(base64UrlToBytes(header))) as { alg?: string };
   if (parsedHeader.alg !== "HS256") return null;
 
-  const parsedPayload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payload))) as { exp?: number; userId?: string; role?: string };
-  if (parsedPayload.exp && parsedPayload.exp * 1000 < Date.now()) return null;
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
 
-  if (SECRET) {
-    try {
-      const key = await crypto.subtle.importKey(
-        "raw",
-        new TextEncoder().encode(SECRET),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["verify"]
-      );
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      base64UrlToBytes(signature),
+      new TextEncoder().encode(`${header}.${payload}`)
+    );
 
-      const valid = await crypto.subtle.verify(
-        "HMAC",
-        key,
-        base64UrlToBytes(signature),
-        new TextEncoder().encode(`${header}.${payload}`)
-      );
+    if (!valid) return null;
 
-      if (!valid) {
-        console.warn("JWT Signature verification failed in middleware. Falling back to payload decode for routing.");
-      }
-    } catch (err) {
-      console.error("JWT verification error in middleware:", err);
-    }
+    const parsedPayload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payload))) as {
+      exp?: number;
+      userId?: string;
+      role?: string;
+    };
+    if (parsedPayload.exp && parsedPayload.exp * 1000 < Date.now()) return null;
+
+    return {
+      userId: parsedPayload.userId || "",
+      role: parsedPayload.role || "volunteer",
+    };
+  } catch {
+    return null;
   }
-
-  return {
-    userId: parsedPayload.userId || "",
-    role: parsedPayload.role || "volunteer",
-  };
 }
 
 const roleRouteMap: Record<string, string[]> = {
@@ -68,39 +72,35 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    try {
-      const decoded = await verifyAndDecodeToken(token);
-      if (!decoded) {
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
-
-      const userRole = decoded.role.toLowerCase();
-      const path = request.nextUrl.pathname;
-
-      // Allow access to base dashboard
-      if (path === "/dashboard") {
-        return NextResponse.next();
-      }
-
-      // Check role-based access
-      const allowedPaths = roleRouteMap[userRole] || [];
-      const isAllowed = allowedPaths.some((p) => path.startsWith(p));
-
-      if (!isAllowed) {
-        // Redirect to appropriate dashboard for their role
-        const roleDashboard: Record<string, string> = {
-          admin: "/dashboard/admin",
-          volunteer: "/dashboard/volunteer",
-          donor: "/dashboard/donor",
-          ngo_partner: "/dashboard/volunteer",
-        };
-        return NextResponse.redirect(new URL(roleDashboard[userRole] || "/dashboard", request.url));
-      }
-
-      return NextResponse.next();
-    } catch {
+    const decoded = await verifyAndDecodeToken(token);
+    if (!decoded) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
+
+    const userRole = decoded.role.toLowerCase();
+    const path = request.nextUrl.pathname;
+
+    // Allow access to base dashboard
+    if (path === "/dashboard") {
+      return NextResponse.next();
+    }
+
+    // Check role-based access
+    const allowedPaths = roleRouteMap[userRole] || [];
+    const isAllowed = allowedPaths.some((p) => path.startsWith(p));
+
+    if (!isAllowed) {
+      // Redirect to appropriate dashboard for their role
+      const roleDashboard: Record<string, string> = {
+        admin: "/dashboard/admin",
+        volunteer: "/dashboard/volunteer",
+        donor: "/dashboard/donor",
+        ngo_partner: "/dashboard/volunteer",
+      };
+      return NextResponse.redirect(new URL(roleDashboard[userRole] || "/dashboard", request.url));
+    }
+
+    return NextResponse.next();
   }
 
   return NextResponse.next();
@@ -109,3 +109,4 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/dashboard/:path*"],
 };
+

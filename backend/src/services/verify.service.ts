@@ -5,8 +5,28 @@ import { BadRequestError, NotFoundError } from "../utils/errors.js";
 import { sendOTPEmail, sendVerificationLinkEmail } from "./email.service.js";
 import { generateToken } from "./auth.service.js";
 
+// We store verification codes as a SHA-256 hash so a database dump doesn't
+// leak live OTPs/tokens. Inputs are compared with timingSafeEqual to avoid
+// leaking prefix matches through response timing.
+function hashCode(code: string): string {
+  return crypto.createHash("sha256").update(code, "utf8").digest("hex");
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+  } catch {
+    return false;
+  }
+}
+
 function generateSecureOTP(): string {
   return crypto.randomInt(100000, 999999).toString();
+}
+
+function generateSecureLinkToken(): string {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 export async function sendVerificationOTP(email: string) {
@@ -29,13 +49,13 @@ export async function sendVerificationOTP(email: string) {
   await prisma.verification.create({
     data: {
       userId: user.id,
-      code: otp,
+      code: hashCode(otp),
       type: "email_otp",
       expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     },
   });
 
-  // Send OTP email
+  // Send OTP email (plaintext OTP — only the recipient sees it)
   sendOTPEmail(email, otp).catch((err) =>
     console.error("Error sending OTP email:", err)
   );
@@ -53,10 +73,11 @@ export async function verifyVerificationOTP(email: string, code: string) {
     return { success: true, message: "Email already verified" };
   }
 
+  // Look up by hash of the candidate code.
   const verification = await prisma.verification.findFirst({
     where: {
       userId: user.id,
-      code,
+      code: hashCode(code),
       type: "email_otp",
       used: false,
       expiresAt: { gt: new Date() },
@@ -65,6 +86,12 @@ export async function verifyVerificationOTP(email: string, code: string) {
   });
 
   if (!verification) {
+    throw new BadRequestError("Invalid or expired OTP");
+  }
+
+  // Constant-time compare as defense-in-depth (in case DB collation is
+  // case-insensitive or we ever index by partial prefix).
+  if (!timingSafeEqualHex(verification.code, hashCode(code))) {
     throw new BadRequestError("Invalid or expired OTP");
   }
 
@@ -98,11 +125,12 @@ export async function sendVerificationLinkToEmail(email: string) {
     data: { used: true },
   });
 
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = generateSecureLinkToken();
+  const tokenHash = hashCode(token);
   await prisma.verification.create({
     data: {
       userId: user.id,
-      code: token,
+      code: tokenHash,
       type: "email_link",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     },
@@ -117,16 +145,17 @@ export async function sendVerificationLinkToEmail(email: string) {
 }
 
 export async function verifyVerificationLink(token: string) {
+  const tokenHash = hashCode(token);
   const verification = await prisma.verification.findFirst({
     where: {
-      code: token,
+      code: tokenHash,
       type: "email_link",
       used: false,
       expiresAt: { gt: new Date() },
     },
   });
 
-  if (!verification) {
+  if (!verification || !timingSafeEqualHex(verification.code, tokenHash)) {
     throw new BadRequestError("Invalid or expired verification link");
   }
 

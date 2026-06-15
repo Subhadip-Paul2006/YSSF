@@ -21,9 +21,34 @@ declare global {
   }
 }
 
-export async function getUserFromRequest(req: Request) {
+const SESSION_COOKIE = "yssf-session";
+
+function extractToken(req: Request): string | null {
+  // 1. Bearer token in Authorization header (preferred for non-browser callers)
   const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  // 2. HttpOnly session cookie set by the backend on login/register
+  // (express's cookie parser is configured globally as a JSON body only;
+  // we read the cookie via the signed/unsigned Cookie header here).
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    const parts = cookieHeader.split(/;\s*/);
+    for (const part of parts) {
+      const eq = part.indexOf("=");
+      if (eq < 0) continue;
+      const name = part.slice(0, eq).trim();
+      if (name === SESSION_COOKIE) {
+        return decodeURIComponent(part.slice(eq + 1).trim());
+      }
+    }
+  }
+  return null;
+}
+
+export async function getUserFromRequest(req: Request) {
+  const token = extractToken(req);
   if (!token) return null;
 
   try {

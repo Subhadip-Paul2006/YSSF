@@ -12,6 +12,33 @@ function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 10);
 }
 
+const DEFAULT_DEV_PASSWORD = "yssf-dev-password-CHANGE";
+const ADMIN_EMAIL = "soumya.chk101@gmail.com";
+const VOLUNTEER_EMAIL = "volunteer@yssf.org";
+
+function resolveSeedPassword(envVar: string | undefined, fallback: string): string {
+  const isProduction = process.env.NODE_ENV === "production";
+  if (envVar) {
+    if (envVar.length < 12) {
+      throw new Error(
+        `Refusing to seed: ${envVar} must be at least 12 characters. Long, random values only.`
+      );
+    }
+    return envVar;
+  }
+  if (isProduction) {
+    throw new Error(
+      "Refusing to seed in production without an explicit SEED_ADMIN_PASSWORD / SEED_VOLUNTEER_PASSWORD env var. " +
+        "Never use default passwords in production."
+    );
+  }
+  console.warn(
+    `⚠️  Using insecure default seed password for ${fallback === "admin" ? ADMIN_EMAIL : VOLUNTEER_EMAIL}. ` +
+      "Set SEED_ADMIN_PASSWORD / SEED_VOLUNTEER_PASSWORD for any non-throwaway environment."
+  );
+  return DEFAULT_DEV_PASSWORD;
+}
+
 const CAMPAIGNS = [
   { id: "1", slug: "green-canopy-project", title: "Green Canopy Project", category: "Environment", description: "Our target is planting 20,000 native saplings in Bankura to establish organic corridors.", fullDescription: "The Green Canopy Project is our flagship environmental initiative aimed at reforesting degraded lands across the Bankura district of West Bengal.", raised: 325000, goal: 500000, imageSrc: "/Assets/Basic_Workflow.png", accentClass: "text-primary-900", progressColor: "bg-primary-900", status: "active" },
   { id: "2", slug: "sakti-blood-directory", title: "Sakti Blood Directory", category: "Healthcare", description: "Developing a custom web dashboard to match emergency donors with local hospital units in real-time.", fullDescription: "The Sakti Blood Directory combines technology with grassroots healthcare.", raised: 185000, goal: 300000, imageSrc: "/Assets/Ecosystems.png", accentClass: "text-alert-500", progressColor: "bg-alert-500", status: "active" },
@@ -61,16 +88,39 @@ const GALLERY_ITEMS = [
 async function main() {
   console.log("Seeding database...");
 
+  const adminPassword = resolveSeedPassword(process.env.SEED_ADMIN_PASSWORD, "admin");
+  const volunteerPassword = resolveSeedPassword(process.env.SEED_VOLUNTEER_PASSWORD, "volunteer");
+
   console.log("  Creating demo users...");
-  await prisma.user.upsert({ 
-    where: { email: "soumya.chk101@gmail.com" }, 
-    update: { emailVerified: true }, 
-    create: { id: "user-admin-001", name: "YSSF Admin", email: "soumya.chk101@gmail.com", phone: "9876543210", role: "ADMIN", location: "Kolkata, West Bengal", passwordHash: hashPassword("Soumya@933"), emailVerified: true } 
+  await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: { emailVerified: true, passwordHash: hashPassword(adminPassword) },
+    create: {
+      id: "user-admin-001",
+      name: "YSSF Admin",
+      email: ADMIN_EMAIL,
+      phone: "9876543210",
+      role: "ADMIN",
+      location: "Kolkata, West Bengal",
+      passwordHash: hashPassword(adminPassword),
+      emailVerified: true,
+    },
   });
-  await prisma.user.upsert({ 
-    where: { email: "volunteer@yssf.org" }, 
-    update: { emailVerified: true }, 
-    create: { id: "user-volunteer-001", name: "Priya Volunteer", email: "volunteer@yssf.org", phone: "9876543211", role: "VOLUNTEER", location: "Bankura, West Bengal", skills: "Teaching, First Aid, Event Management", availability: "Weekends", passwordHash: hashPassword("volunteer123"), emailVerified: true } 
+  await prisma.user.upsert({
+    where: { email: VOLUNTEER_EMAIL },
+    update: { emailVerified: true, passwordHash: hashPassword(volunteerPassword) },
+    create: {
+      id: "user-volunteer-001",
+      name: "Priya Volunteer",
+      email: VOLUNTEER_EMAIL,
+      phone: "9876543211",
+      role: "VOLUNTEER",
+      location: "Bankura, West Bengal",
+      skills: "Teaching, First Aid, Event Management",
+      availability: "Weekends",
+      passwordHash: hashPassword(volunteerPassword),
+      emailVerified: true,
+    },
   });
 
   console.log("  Seeding campaigns...");

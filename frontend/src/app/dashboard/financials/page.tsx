@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -16,6 +17,7 @@ import {
   Wallet,
   Receipt,
   Building2,
+  Loader2,
 } from "lucide-react";
 
 interface ExpenseCategory {
@@ -34,7 +36,24 @@ interface FinancialRecord {
   status: "Audited" | "Pending Audit";
 }
 
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+interface BankAccount {
+  bank: string;
+  branch: string;
+  accountNumber: string;
+  ifsc: string;
+  holder?: string;
+  type?: string;
+  label: string;
+}
+
+interface ComplianceInfo {
+  registrationNo: string;
+  pan: string;
+  eightyG: string;
+  fcra: string;
+}
+
+const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategory[] = [
   {
     name: "Campaign Operations",
     amount: 410000,
@@ -87,7 +106,7 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
     color: "bg-alert-500",
     details: [
       "Contingency fund for disaster response: Rs 55,500",
-      "Held in fixed deposit (SBI A/C: ***7890)",
+      "Held in fixed deposit (Account on file with operations team)",
     ],
   },
 ];
@@ -101,6 +120,17 @@ const FINANCIAL_RECORDS: FinancialRecord[] = [
   { quarter: "Q2 2026", income: 245000, expenses: 210000, surplus: 35000, status: "Pending Audit" },
 ];
 
+// Bank account details are NOT bundled. The page fetches them from a
+// server-side admin endpoint, and only admins (who are already authenticated
+// and authorized) ever see the actual account numbers. Public visitors see
+// "details available on request".
+const PUBLIC_BANK_PLACEHOLDER: Omit<BankAccount, "accountNumber" | "ifsc"> = {
+  bank: "State Bank of India (SBI)",
+  branch: "Salt Lake Sector V, Kolkata",
+  holder: "Youth Sakti Social Foundation",
+  label: "Primary Operations Account",
+};
+
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -109,11 +139,50 @@ function formatCurrency(val: number) {
   }).format(val);
 }
 
+function maskAccountNumber(num: string): string {
+  if (num.length <= 4) return "****";
+  return "****" + num.slice(-4);
+}
+
 export default function FinancialsDashboard() {
   const totalIncome = FINANCIAL_RECORDS.reduce((s, r) => s + r.income, 0);
   const totalExpenses = FINANCIAL_RECORDS.reduce((s, r) => s + r.expenses, 0);
   const totalSurplus = FINANCIAL_RECORDS.reduce((s, r) => s + r.surplus, 0);
   const auditedQuarters = FINANCIAL_RECORDS.filter((r) => r.status === "Audited").length;
+
+  // Bank/compliance data is fetched from the server; never embedded here.
+  const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
+  const [compliance, setCompliance] = useState<ComplianceInfo | null>(null);
+  const [bankLoading, setBankLoading] = useState(true);
+  const [bankError, setBankError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDisclosures() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/dashboard/financials/disclosures`,
+          { credentials: "include" }
+        );
+        if (!res.ok) {
+          throw new Error("Disclosures unavailable");
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setBankAccount(data?.bank || null);
+        setCompliance(data?.compliance || null);
+      } catch (err) {
+        if (cancelled) return;
+        setBankError(err instanceof Error ? err.message : "Failed to load disclosures");
+      } finally {
+        if (!cancelled) setBankLoading(false);
+      }
+    }
+    loadDisclosures();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-surface-100/40 via-white to-surface-100/20">
@@ -165,19 +234,27 @@ export default function FinancialsDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm font-sans">
                 <div>
                   <p className="text-primary-200 text-xs font-heading font-semibold uppercase tracking-wider">NGO Registration</p>
-                  <p className="text-white font-heading font-bold mt-1">YSSF/2024/WB098</p>
+                  <p className="text-white font-heading font-bold mt-1">
+                    {compliance?.registrationNo || "Available on request"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-primary-200 text-xs font-heading font-semibold uppercase tracking-wider">PAN Number</p>
-                  <p className="text-white font-heading font-bold mt-1">AACY09827B</p>
+                  <p className="text-white font-heading font-bold mt-1">
+                    {compliance?.pan || "Available on request"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-primary-200 text-xs font-heading font-semibold uppercase tracking-wider">80G Status</p>
-                  <p className="text-accent-500 font-heading font-bold mt-1">Tax Exempt Eligible</p>
+                  <p className="text-accent-500 font-heading font-bold mt-1">
+                    {compliance?.eightyG || "Tax Exempt Eligible"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-primary-200 text-xs font-heading font-semibold uppercase tracking-wider">FCRA Status</p>
-                  <p className="text-primary-200 font-heading font-bold mt-1">Under Application</p>
+                  <p className="text-primary-200 font-heading font-bold mt-1">
+                    {compliance?.fcra || "Under Application"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -257,7 +334,7 @@ export default function FinancialsDashboard() {
           </div>
 
           <div className="space-y-6">
-            {EXPENSE_CATEGORIES.map((cat) => (
+            {DEFAULT_EXPENSE_CATEGORIES.map((cat) => (
               <div key={cat.name}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -403,26 +480,63 @@ export default function FinancialsDashboard() {
             <h2 className="font-heading font-extrabold text-xl text-primary-900">Bank Account Details (Public Disclosure)</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {bankLoading ? (
+            <div className="p-6 flex items-center gap-2 text-foreground/60 text-sm font-sans">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading account details…
+            </div>
+          ) : bankError || !bankAccount ? (
             <div className="p-5 bg-white rounded-2xl border border-primary-200/30">
-              <h3 className="font-heading font-bold text-sm text-primary-900 mb-3">Primary Operations Account</h3>
+              <h3 className="font-heading font-bold text-sm text-primary-900 mb-2">
+                {PUBLIC_BANK_PLACEHOLDER.label}
+              </h3>
               <div className="space-y-2 font-sans text-xs text-foreground/70">
-                <p><span className="font-heading font-semibold text-primary-900">Bank:</span> State Bank of India (SBI)</p>
-                <p><span className="font-heading font-semibold text-primary-900">Branch:</span> Salt Lake Sector V, Kolkata</p>
-                <p><span className="font-heading font-semibold text-primary-900">A/C No:</span> 39876543210 (IFSC: SBIN0001234)</p>
-                <p><span className="font-heading font-semibold text-primary-900">A/C Holder:</span> Youth Sakti Social Foundation</p>
+                <p><span className="font-heading font-semibold text-primary-900">Bank:</span> {PUBLIC_BANK_PLACEHOLDER.bank}</p>
+                <p><span className="font-heading font-semibold text-primary-900">Branch:</span> {PUBLIC_BANK_PLACEHOLDER.branch}</p>
+                <p>
+                  <span className="font-heading font-semibold text-primary-900">A/C No:</span>{" "}
+                  Available on written request to the operations team. The full account number and IFSC are not
+                  published on the public site to reduce fraud risk.
+                </p>
+                {PUBLIC_BANK_PLACEHOLDER.holder && (
+                  <p>
+                    <span className="font-heading font-semibold text-primary-900">A/C Holder:</span>{" "}
+                    {PUBLIC_BANK_PLACEHOLDER.holder}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="p-5 bg-white rounded-2xl border border-primary-200/30">
-              <h3 className="font-heading font-bold text-sm text-primary-900 mb-3">Emergency Reserve Fund</h3>
-              <div className="space-y-2 font-sans text-xs text-foreground/70">
-                <p><span className="font-heading font-semibold text-primary-900">Bank:</span> Punjab National Bank (PNB)</p>
-                <p><span className="font-heading font-semibold text-primary-900">Branch:</span> Park Street, Kolkata</p>
-                <p><span className="font-heading font-semibold text-primary-900">A/C No:</span> 56789012345 (IFSC: PUNB0005678)</p>
-                <p><span className="font-heading font-semibold text-primary-900">Type:</span> Fixed Deposit (Emergency Contingency)</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-5 bg-white rounded-2xl border border-primary-200/30">
+                <h3 className="font-heading font-bold text-sm text-primary-900 mb-3">
+                  {bankAccount.label || "Operations Account"}
+                </h3>
+                <div className="space-y-2 font-sans text-xs text-foreground/70">
+                  <p><span className="font-heading font-semibold text-primary-900">Bank:</span> {bankAccount.bank}</p>
+                  <p><span className="font-heading font-semibold text-primary-900">Branch:</span> {bankAccount.branch}</p>
+                  <p>
+                    <span className="font-heading font-semibold text-primary-900">A/C No:</span>{" "}
+                    {maskAccountNumber(bankAccount.accountNumber)} (IFSC: {bankAccount.ifsc})
+                  </p>
+                  {bankAccount.holder && (
+                    <p>
+                      <span className="font-heading font-semibold text-primary-900">A/C Holder:</span>{" "}
+                      {bankAccount.holder}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="p-5 bg-white rounded-2xl border border-primary-200/30">
+                <h3 className="font-heading font-bold text-sm text-primary-900 mb-3">Donor Advisory</h3>
+                <p className="font-sans text-xs text-foreground/70 leading-relaxed">
+                  YSSF never solicits donations through social-media DMs, personal UPI handles, or third-party
+                  wallets. Always confirm the account holder name matches our registered society name and the
+                  IFSC corresponds to the public branch listed above before transferring.
+                </p>
               </div>
             </div>
-          </div>
+          )}
         </motion.div>
 
         {/* CTA */}

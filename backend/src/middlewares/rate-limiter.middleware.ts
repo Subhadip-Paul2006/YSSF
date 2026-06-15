@@ -15,3 +15,14 @@ export const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Stricter limiter for public mutation endpoints (donation, event register,
+// contact). These are unauthenticated and reachable from any browser, so we
+// cap aggressively to block spam, scraping, and credential-stuffing.
+export const writeLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 30,
+  message: { error: "Too many submissions, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

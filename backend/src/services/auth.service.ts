@@ -13,6 +13,21 @@ import { sendVerificationLinkEmail } from "./email.service.js";
 
 const SECRET = new TextEncoder().encode(env.JWT_SECRET);
 
+// Hash verification codes/tokens before persisting so a database dump does
+// not leak live OTPs or single-use verification links.
+function hashCode(code: string): string {
+  return crypto.createHash("sha256").update(code, "utf8").digest("hex");
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+  } catch {
+    return false;
+  }
+}
+
 export async function generateToken(userId: string, role: string): Promise<string> {
   return await new SignJWT({ userId, role })
     .setProtectedHeader({ alg: "HS256" })
@@ -51,7 +66,7 @@ export async function registerUser({
   await prisma.verification.create({
     data: {
       userId: user.id,
-      code: verificationToken,
+      code: hashCode(verificationToken),
       type: "email_link",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     },
@@ -88,7 +103,7 @@ export async function sendVerificationLink(userId: string, userEmail: string, em
   await prisma.verification.create({
     data: {
       userId,
-      code: verificationToken,
+      code: hashCode(verificationToken),
       type: "email_link",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     },
@@ -110,10 +125,11 @@ export async function verifyEmailOTP(email: string, code: string) {
     throw new BadRequestError("Email already verified");
   }
 
+  const codeHash = hashCode(code);
   const verification = await prisma.verification.findFirst({
     where: {
       userId: user.id,
-      code,
+      code: codeHash,
       type: "email_otp",
       used: false,
       expiresAt: { gt: new Date() },
@@ -121,7 +137,7 @@ export async function verifyEmailOTP(email: string, code: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  if (!verification) {
+  if (!verification || !timingSafeEqualHex(verification.code, codeHash)) {
     throw new BadRequestError("Invalid or expired OTP");
   }
 
@@ -166,7 +182,7 @@ export async function resendVerificationToken(email: string) {
   await prisma.verification.create({
     data: {
       userId: user.id,
-      code: verificationToken,
+      code: hashCode(verificationToken),
       type: "email_link",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     },
@@ -266,7 +282,7 @@ export async function registerFullUser({
   await prisma.verification.create({
     data: {
       userId: user.id,
-      code: verificationToken,
+      code: hashCode(verificationToken),
       type: "email_link",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     },
@@ -316,17 +332,59 @@ export async function loginWithGoogleMock() {
   };
 }
 
-export async function loginWithGoogleSupabase({ email, name, avatarUrl }: any) {
-  let user = await prisma.user.findUnique({ where: { email } });
+export async function loginWithGoogleSupabase({ supabaseToken, email, name, avatarUrl }: {
+  supabaseToken: string;
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+}) {
+  // 1. Verify the Supabase access token by introspecting the user. We trust the
+  //    Supabase project to authenticate the user; we only accept email/name from
+  //    a session we can independently confirm.
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new UnauthorizedError("Supabase not configured");
+  }
+
+  let supabaseUser: { id: string; email?: string; user_metadata?: Record<string, any> };
+  try {
+    const resp = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${supabaseToken}`,
+        apikey: supabaseAnonKey,
+      },
+    });
+    if (!resp.ok) {
+      throw new UnauthorizedError("Invalid Supabase session");
+    }
+    supabaseUser = (await resp.json()) as typeof supabaseUser;
+  } catch (err) {
+    if (err instanceof UnauthorizedError) throw err;
+    throw new UnauthorizedError("Failed to verify Supabase session");
+  }
+
+  // 2. The user must be the one whose Supabase session we just verified.
+  //    Do not trust the email/name in the request body alone.
+  if (!supabaseUser.email || supabaseUser.email.toLowerCase() !== email.toLowerCase()) {
+    throw new UnauthorizedError("Supabase session does not match provided identity");
+  }
+
+  const verifiedName =
+    supabaseUser.user_metadata?.full_name ||
+    supabaseUser.user_metadata?.name ||
+    name;
+
+  let user = await prisma.user.findUnique({ where: { email: supabaseUser.email } });
 
   if (!user) {
     user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: verifiedName,
+        email: supabaseUser.email,
         role: "volunteer",
-        emailVerified: true, // Google-verified emails are trusted
-        passwordHash: "", // No password for OAuth users
+        emailVerified: true, // Supabase-verified session
+        passwordHash: "",
       },
     });
   } else if (!user.emailVerified) {

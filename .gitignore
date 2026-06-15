@@ -9,3 +9,7 @@ graphify-out/
 .DS_Store
 .env
 .env*.local
+
+SECURITY_AUDIT_REPORT_2026-06-15.md
+.settings.local.json
+.claude
